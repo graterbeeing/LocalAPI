@@ -1,0 +1,58 @@
+﻿@page "/"
+@using UseBD.Services;
+@inject User_service User_service;
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world! </h1>
+
+Welcome to your new app.
+
+<h3>Yahoo Finance API Test</h3>
+
+<p>Apple Stock Price:</p>
+
+@if (true)
+{
+    <p> @appleStockPrice</p>
+}
+
+
+@code {
+      
+     
+    private double appleStockPrice = 666.66;
+    /*
+     * 
+     
+    private bool loading = true;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Call the function asynchronously
+            var result = await Yahoo
+                .Symbols("TSLA")
+                .Fields(YahooFinanceApi.Field.RegularMarketPrice)
+                .QueryAsync();
+
+            // Store the stock price in the variable to display it
+            appleStockPrice = result["TSLA"][Field.RegularMarketPrice];
+        }
+        catch (Exception ex)
+        {
+            // Handle any error and display an error message
+            errorMessage = $"Error fetching stock data: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+        finally
+        {
+            loading = false; // Set loading to false when done
+        }
+        */
+  
+}
+
+}

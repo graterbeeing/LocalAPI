@@ -1,0 +1,98 @@
+﻿
+@page "/Main_page"
+@using ClassLibrary;
+@using UseBD.Services;
+@inject User_service User_service;
+@inject HttpClient Http;
+@inject NavigationManager NavigationManager;
+@using System.Collections.Generic
+@using System.Linq
+@using BlazorBootstrap;
+
+graph
+
+<div class="container-fluid overflow-x-auto">
+    <LineChart @ref="lineChart" Width="800" />
+</div>
+<h1>@messege</h1>
+
+@code {
+
+    private LineChart lineChart = default!;
+    private LineChartOptions lineChartOptions = default!;
+    private ChartData chartData = default!;
+    private StockDataService stock = new StockDataService();
+    private List<double> prices = new List<double>{};
+    private string messege = "ahhh";
+    private TaskCompletionSource<bool> dataLoaded = new TaskCompletionSource<bool>();
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var colors = ColorUtility.CategoricalTwelveColors;
+
+        DateTime start = DateTime.Now.AddDays(-10);
+
+        prices = await stock.GetHistoricalClosingPricesAsync("MSFT",start);
+        if (prices.Count == 0)
+        {
+            Console.WriteLine("No historical data found for the specified date.");
+            return;
+        }
+        Console.WriteLine(prices.Count);
+        Console.WriteLine(prices[0]);
+
+
+        var labels = new List<string> {"day 1","day 2", "day 3", "day 4", "day 5", "day 6", "day 7" };
+        var datasets = new List<IChartDataset>();
+
+        var dataset1 = new LineChartDataset
+            {
+                Label = "Windows",
+                //Data = new List<double?> { 7265791, 5899643, 6317759, 6315641, 5338211, 8496306, 7568556, 8538933, 8274297, 8657298, 7548388, 7764845 },
+
+                Data = prices.Select(p => (double?)p).ToList(), // Convert to List<double?>
+                BackgroundColor = colors[0],
+                BorderColor = colors[0],
+                BorderWidth = 2,
+                HoverBorderWidth = 4,
+                // PointBackgroundColor = colors[0],
+                // PointRadius = 0, // hide points
+                // PointHoverRadius = 4,
+            };
+        datasets.Add(dataset1);
+
+
+        chartData = new ChartData { Labels = labels, Datasets = datasets };
+
+        lineChartOptions = new();
+        lineChartOptions.Responsive = true;
+        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
+
+        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "Time", Display = true };
+        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Stock price", Display = true };
+
+        lineChartOptions.Plugins.Title!.Text = "Operating system";
+        lineChartOptions.Plugins.Title.Display = true;
+
+        dataLoaded.SetResult(true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await dataLoaded.Task;
+            if (chartData == null)
+            {
+                Console.WriteLine("chartData is null. Cannot initialize chart.");
+                messege = "error: graph data could not load";
+                return;
+            }
+            await lineChart.InitializeAsync(chartData, lineChartOptions);
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+}

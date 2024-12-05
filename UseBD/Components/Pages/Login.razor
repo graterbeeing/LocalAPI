@@ -1,0 +1,82 @@
+﻿@page "/login"
+@using ClassLibrary;
+@using UseBD.Services;
+@inject User_service User_service;
+@inject HttpClient Http;
+@inject NavigationManager NavigationManager;
+
+<h3>Login</h3>
+<header>
+    <div>
+        <h5>Username:</h5>
+        <input type="text" @bind="username" style="width:400px;margin-bottom:10px" />
+        <br />
+    </div>
+    <div>
+        <div >
+            @if (pass_vis == true)
+            {
+                <header style="background-color:crimson;text-align:center;color:black">
+                    @text
+                </header>
+            }
+        </div>
+        <h5>Password:</h5>
+        <input  type="text" @bind="password" style="width:400px;margin-bottom:10px" />
+        <br />
+    </div>
+    <button @onclick="Log_in" >Login</button>
+</header>
+
+
+<nav>
+    <a href="/home_new">Home</a>
+    <a href="/sign_in">Sign in</a>
+</nav>
+
+<style>
+    nav{
+        margin:20px;
+        text-align:center;
+    }
+    header{
+        background-color: #4CAF50;
+        color: white;
+        text-align: center;
+    }
+</style>
+@code {
+    private string username;
+    private string password;
+    private bool pass_vis = false;
+    private string text = "";
+    private List<User> Users;
+
+    protected async Task Log_in()
+    {
+        Console.WriteLine("entering function log_in");
+        string url = $"http://localhost:5210/api/User/Find_user/{password}/{username}";
+        Users = await Http.GetFromJsonAsync<List<User>>(url);
+        if (Users.Count == 1)
+        {
+            pass_vis = false;
+            User_service.UserId = Users[0].user_id;
+            User_service.UserName= Users[0].username;
+            User_service.Role = Users[0].admin;
+            NavigationManager.NavigateTo("/Main_page");
+        }
+        if(Users.Count > 1)
+        {
+            pass_vis = true;
+            text = "more than one user with this user and password";
+        }
+        if(Users.Count == 0)
+        {
+            pass_vis = true;
+            text = "Incorrect user or password";
+        }
+
+
+    }
+    
+}

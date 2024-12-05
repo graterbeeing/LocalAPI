@@ -1,0 +1,67 @@
+﻿<h3>Sign_in</h3>
+@page "/sign_in"
+@using ClassLibrary;
+@using UseBD.Services;
+@inject User_service User_service;
+@inject HttpClient Http;
+@inject NavigationManager NavigationManager;
+<form @onsubmit="HandleRegister">
+
+    <div>
+        <h5>Username:</h5>
+        <input type="text" @bind="user.username" style="width:400px;margin-bottom:10px" />
+        <br />
+    </div>
+    <div>
+        <div>
+            @if (pass_vis == true)
+            {
+                <header style="background-color:crimson;text-align:center;color:black">
+                    @text
+                </header>
+            }
+        </div>
+        <h5>Email:</h5>
+        <input type="email" @bind="user.email" style="width:400px;margin-bottom:10px" />
+        <br />
+    </div>
+    <div>
+        <h5>Password:</h5>
+        <input type="text" @bind="user.password" style="width:400px;margin-bottom:10px" />
+        <br />
+    </div>
+
+    <button type="submit">הרשמה</button>
+</form>
+
+
+@code {
+    private User user = new();
+    private string text = "";
+    private bool pass_vis = false;
+
+    private async Task HandleRegister()
+    {
+        pass_vis = false;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/User/sign-in", user);
+            if (response.IsSuccessStatusCode)
+            {
+                NavigationManager.NavigateTo("/login");
+            }
+            else
+            {
+                text = "אירעה שגיאה בעת ההרשמה.";
+                pass_vis = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            text = $"אירעה שגיאה: {ex.Message}";
+            pass_vis = true;
+        }
+        
+    }
+
+}
