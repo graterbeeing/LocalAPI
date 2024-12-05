@@ -1,0 +1,53 @@
+﻿@page "/cities"
+@inject HttpClient Http
+@using UseBD.Model;
+
+<h3>Cities  </h3>
+
+@if (cities == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (cities.Count == 0)
+{
+    <p>No cities found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+           
+            <tr>
+                <th>inv_Id</th>
+                <th>user_id</th>
+                <th>type_id</th>
+                <th>option_id</th>
+                <th>amount_invested</th>
+                <th>investment_date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (Investment city in cities)
+            {
+                <tr>
+                    <td>@city.inv_Id</td>
+                    <td>@city.user_id</td>
+                    <td>@city.type_id</td>
+                    <td>@city.option_id</td>
+                    <td>@city.amount_invested</td>
+                    <td>@city.investment_date</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private List<Investment> cities;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cities = await Http.GetFromJsonAsync<List<Investment>>("http://localhost:5210/api/Investment");
+    }
+}

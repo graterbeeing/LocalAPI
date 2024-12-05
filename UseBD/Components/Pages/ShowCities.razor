@@ -1,0 +1,11 @@
+﻿<h3>ShowCities</h3>
+@inject HttpClient Http
+@using UseBD.Model;
+
+@code {
+	private List<City> cities;
+	protected override async Task OnInitializedAsync()
+	{
+		cities = await Http.GetFromJsonAsync<List<City>>("http.localhost:7226/api/Cities");
+	}
+}

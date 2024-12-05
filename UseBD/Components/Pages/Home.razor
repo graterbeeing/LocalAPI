@@ -1,0 +1,54 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world! </h1>
+
+Welcome to your new app.
+
+<h3>Yahoo Finance API Test</h3>
+
+<p>Apple Stock Price:</p>
+
+@if (true)
+{
+    <p> not implemented...</p>
+}
+
+
+@code {
+    
+     /*
+     shit for apple stock showing
+      
+     
+    private double appleStockPrice;
+    private bool loading = true;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Call the function asynchronously
+            var result = await YahooFinanceApi.Yahoo
+                .Symbols("APPL")
+                .Fields(YahooFinanceApi.Field.RegularMarketPrice)
+                .QueryAsync();
+
+            // Store the stock price in the variable to display it
+            appleStockPrice = result["APPL"][YahooFinanceApi.Field.RegularMarketPrice];
+        }
+        catch (Exception ex)
+        {
+            // Handle any error and display an error message
+            errorMessage = $"Error fetching stock data: {ex.Message}";
+        }
+        finally
+        {
+            loading = false; // Set loading to false when done
+        }
+    }
+     */
+}
+
