@@ -1,0 +1,101 @@
+﻿@page "/add_inv"
+@inject HttpClient Http
+@using UseBD.Model;
+
+@inject HttpClient Http
+
+<h3>Insert Investment</h3>
+
+<div>
+    <label>User ID: </label>
+    <input type="number" @bind="UserId" />
+</div>
+<div>
+    <label>Type ID: </label>
+    <input type="number" @bind="TypeId" />
+</div>
+<div>
+    <label>Option ID: </label>
+    <input type="number" @bind="OptionId" />
+</div>
+<div>
+    <label>Amount Invested: </label>
+    <input type="number" @bind="Amount" />
+</div>
+<button @onclick="InsertInvestment">Insert Investment</button>
+
+<p>@Message</p>
+
+<br>
+<br>
+<br>
+
+<div>
+    <label>investment_id to remove: </label>
+    <input type="number" @bind="removed" />
+</div>
+
+<button @onclick="remove">remove Investment</button>
+
+<p>@Message2</p>
+
+@code {
+    private int UserId;
+    private int TypeId;
+    private int OptionId;
+    private int Amount;
+    private string Message;
+    private int removed;
+    private string Message2;
+
+    private async Task InsertInvestment()
+    {
+        try
+        {
+            // Construct the API URL
+            string url = $"http://localhost:5210/api/Investment/insert_inv/{UserId}/{TypeId}/{OptionId}/{Amount}";
+
+            // Call the API using HttpClient
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Message = "Investment inserted successfully!";
+            }
+            else
+            {
+                Message = $"Failed to insert investment: {response.ReasonPhrase}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task remove()
+    {
+        try
+        {
+            // Construct the API URL
+            string url = $"http://localhost:5210/api/Investment/remove_inv/{removed}";
+
+            // Call the API using HttpClient
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Message2 = "Investment inserted successfully!";
+            }
+            else
+            {
+                Message2 = $"Failed to insert investment: {response.ReasonPhrase}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Message2 = $"Error: {ex.Message}";
+        }
+    }
+}
+

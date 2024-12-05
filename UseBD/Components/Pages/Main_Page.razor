@@ -1,0 +1,12 @@
+﻿@page "/Main_page"
+@using ClassLibrary;
+@using UseBD.Services;
+@inject User_service User_service;
+@inject HttpClient Http;
+@inject NavigationManager NavigationManager;
+<h3>Main_Page</h3>
+<h4>hello @User_service.UserName</h4>
+
+@code {
+
+}
