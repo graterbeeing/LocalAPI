@@ -49,3 +49,98 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+body {
+}
+
+.nav-scrollable {
+    background-color: #f0f0f0; /* Light Gray example */
+}
+
+    nav a {
+        color: white;
+        text-decoration: none;
+        font-size: 18px;
+        margin: 0 15px;
+        padding: 10px 15px;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+
+        nav a:hover {
+            background-color: #2E7D32; /* Slightly darker green */
+        }
+
+header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s;
+}
+
+    button:hover {
+        background-color: #388E3C;
+    }
+
+    button:active {
+        transform: scale(0.95);
+    }
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+    input:focus, textarea:focus {
+        border-color: #4CAF50;
+        outline: none;
+        box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+    }
+
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 15px;
+    border-left: 5px solid #4CAF50;
+}
+
+    .card h3 {
+        margin-top: 0;
+        color: #388E3C;
+    }
+
+footer {
+    background-color: #2E7D32;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    margin-top: 20px;
+    bottom:10px
+}
+
+.container-fluid2 {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure the container fills the viewport height */
+}
+
+.bi-person-circle {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-person-circle' viewBox='0 0 16 16'%3E%3Cpath d='M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0'/%3E%3Cpath fill-rule='evenodd' d='M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1'/%3E%3C/svg%3E");
+}

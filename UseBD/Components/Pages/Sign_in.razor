@@ -45,7 +45,7 @@
         pass_vis = false;
         try
         {
-            var response = await Http.PostAsJsonAsync("api/User/sign-in", user);
+            var response = await Http.PostAsJsonAsync("http://localhost:5210/api/User/Sign-in", user);
             if (response.IsSuccessStatusCode)
             {
                 NavigationManager.NavigateTo("/login");

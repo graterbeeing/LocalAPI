@@ -1,0 +1,61 @@
+﻿@page "/option-manager"
+@inject NavigationManager NavigationManager;
+<h3>Option_manager</h3>
+
+<button @onclick="Back" style="padding:2px 15px">
+    Back
+</button>
+
+<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label for="name">Name:</label>
+        <InputText id="name" @bind-Value="@formData.Name" class="form-control" />
+        <ValidationMessage For="@(() => formData.Name)" />
+    </div>
+
+    <div class="form-group">
+        <label for="option">Option:</label>
+        <InputSelect id="option" @bind-Value="@formData.Option" class="form-control">
+            <option value="1">1</option>
+            <option value="2">2</option>
+        </InputSelect>
+        <ValidationMessage For="@(() => formData.Option)" />
+    </div>
+
+    <button type="submit" >Submit</button>
+</EditForm>
+
+@code {
+    public class FormData
+    {
+        public string Name { get; set; }
+
+        public string Option { get; set; } // Use string for dropdown values
+    }
+
+    private FormData formData = new FormData();
+
+    private void HandleValidSubmit()
+    {
+        // need to handle duplicate stock symbols
+        //                   ^
+        //                   |
+        Console.WriteLine($"Name: {formData.Name}, Option: {formData.Option}");
+
+        // TODO: Process the form data (e.g., send to API)
+    }
+
+    protected async Task Back()
+    {
+        try
+        {
+            NavigationManager.NavigateTo("/user");
+        }
+        catch
+        {
+
+        }
+    }
+}

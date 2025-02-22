@@ -1,8 +1,12 @@
 ﻿@page "/add_inv"
 @inject HttpClient Http
 @using UseBD.Model;
-
+@inject NavigationManager NavigationManager;
 @inject HttpClient Http
+
+<button @onclick="Back" style="padding:2px 15px">
+    Back
+</button>
 
 <h3>Insert Investment</h3>
 
@@ -95,6 +99,18 @@
         catch (Exception ex)
         {
             Message2 = $"Error: {ex.Message}";
+        }
+    }
+
+    protected async Task Back()
+    {
+        try
+        {
+            NavigationManager.NavigateTo("/user");
+        }
+        catch
+        {
+            
         }
     }
 }

@@ -1,12 +1,16 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation;
 
 <link href="css/StyleSheet.css" rel="stylesheet">
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
+    
+    @if (!Navigation.Uri.Contains("home_new"))  // Hide sidebar if on the home page
+    {
+        <div style="background-image:none;background-color:darkslategrey" class="sidebar">
+            <NavMenu />
+        </div>  <!-- This is your sidebar -->
+    }
     <main>
         <div class="top-row px-4">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>

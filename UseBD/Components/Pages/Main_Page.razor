@@ -32,7 +32,7 @@ graph
     {
         var colors = ColorUtility.CategoricalTwelveColors;
 
-        DateTime start = DateTime.Now.AddDays(-10);
+        DateTime start = DateTime.Now.AddDays(-20);
 
         prices = await stock.GetHistoricalClosingPricesAsync("MSFT",start);
         if (prices.Count == 0)

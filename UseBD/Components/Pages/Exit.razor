@@ -1,0 +1,15 @@
+﻿@page "/exit"
+@using UseBD.Model;
+@using UseBD.Services;
+@inject User_service User_service;
+@using ClassLibrary;
+@inject NavigationManager NavigationManager;
+
+@code{
+	protected override void OnInitialized()
+	{
+		User_service.ClearUser();
+		NavigationManager.NavigateTo("/home_new");
+	}
+}
+
