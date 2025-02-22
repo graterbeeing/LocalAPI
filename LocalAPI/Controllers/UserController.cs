@@ -70,7 +70,7 @@ namespace LocalAPI.Controllers
 
 
         // POST api/<UserController>
-        [HttpPost("sign-in")]
+        [HttpPost("Sign-in")]
         public async Task<IActionResult> Sign_in([FromBody] User user)
         {
             if (user == null || string.IsNullOrWhiteSpace(user.password))

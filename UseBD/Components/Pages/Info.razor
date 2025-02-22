@@ -1,0 +1,80 @@
+﻿@page "/user"
+@inject HttpClient Http
+@using UseBD.Model;
+@using UseBD.Services;
+@inject User_service User_service;
+@using ClassLibrary;
+@inject NavigationManager NavigationManager;
+
+<h4 style="text-align:center">in fact didn't change the adress anywhere else so can't be navigated to from sign in  </h4>
+
+<div class="container" style="width:320px">
+    <div class="row" style="height:110px">
+        <div class="col-md-6">
+            <button type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Home
+            </button>
+        </div>
+        <div class="col-md-6">
+            <button type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Profile
+            </button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <button type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Settings
+            </button>
+        </div>
+        <div class="col-md-6">
+            <button type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Help
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (admin)
+{
+    <div class="container d-flex justify-content-center align-items-center" style="min-height: 50vh;">
+        @* Center vertically *@
+        <div class="d-flex flex-row">
+            @* Vertical layout *@
+            <button type="button" class="button" style="height:100px;width:150px;margin:20px">
+                @* Add margin bottom *@
+                <i class="bi bi-person-circle"></i> manage users
+            </button>
+            <button @onclick="Investment" type="button" class="button" style="height:100px;width:150px;margin:20px">
+                <i class="bi bi-person-circle"></i> manage investments
+            </button>
+            <button @onclick="Options" type="button" class="button" style="height:100px;width:150px;margin:20px">
+                @* No margin on last button *@
+                <i class="bi bi-person-circle"></i> create/delete stocks
+            </button>
+        </div>
+    </div>
+}
+
+
+@code {
+    private bool admin;
+
+    protected override void OnInitialized()
+    {
+        admin = User_service.Role == 1;
+        base.OnInitialized();
+    }
+
+    // navigations
+
+    protected async Task Investment()
+    {
+        NavigationManager.NavigateTo("/add_inv");
+    }
+
+    protected async Task Options()
+    {
+        NavigationManager.NavigateTo("/option-manager");
+    }
+}

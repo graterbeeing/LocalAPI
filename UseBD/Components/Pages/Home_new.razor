@@ -1,33 +1,32 @@
 ﻿@page "/home_new"
+@inject NavigationManager Navigation;
 <h3>Welcome to the Home Page</h3>
 
-<header>
-    <h1>Welcome to the Home Page</h1>
-</header>
+<div class="container-fluid2">
+    <header class="text-center ">
+        <h1>Welcome to the Home Page</h1>
+    </header>
 
-<nav>
-    <a href="/sign_in">sign in</a>
-    <a href="/login">Login</a>
-    <a href="/about">About</a>
-</nav>
+    <nav class="text-center " style="background-color: #388E3C">
+        <a href="/sign_in">Sign in</a>
+        <a href="/login">Login</a>
+        <a href="/about">About</a>
+    </nav>
 
-<main>
-    <p>Welcome to our website! Use the navigation links above to explore.</p>
-</main>
+    <main class="flex-grow-1 d-flex justify-content-center align-items-center">
+        <p>Welcome to our website! Use the navigation links above to explore.</p>
+    </main>
 
-<style>
-    header {
-        background-color: #4CAF50;
-        color: white;
-        padding: 10px 20px;
-        text-align: center;
-    }
-    nav {
-        margin: 20px;
-        text-align: center;
-    }
-</style>
+    <div class="card">
+        text
+    </div>
+
+    <footer class="text-center">
+        The stock observation application is brought to you by an independent contractor and run using yahoo finance api
+    </footer>
+</div>
+
 
 @code {
-
+    
 }
