@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using UseBD.Services;
 @inject User_service User_service;
+@using YahooFinanceApi;
+@using ClassLibrary;
 
 <PageTitle>Home</PageTitle>
 
@@ -24,14 +26,25 @@ Welcome to your new app.
 
 
 @code {
-      
-     
-    private double appleStockPrice = 666.66;
+
+    private YFinanceControl stock = new YFinanceControl();
+    private double? appleStockPrice;
+    private DateTime date = new DateTime(2025, 4, 1);
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //appleStockPrice = await stock.GetSingle("AAPL");
+        //Console.WriteLine(appleStockPrice);
+    }
+
     /*
-     * 
-     
-    private bool loading = true;
+         *
+
+
+        private bool loading = true;
     private string errorMessage;
+    private double appleStockPrice;
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,25 +52,22 @@ Welcome to your new app.
         {
             // Call the function asynchronously
             var result = await Yahoo
-                .Symbols("TSLA")
-                .Fields(YahooFinanceApi.Field.RegularMarketPrice)
-                .QueryAsync();
+            .Symbols("TSLA")
+            .Fields(YahooFinanceApi.Field.RegularMarketPrice)
+            .QueryAsync();
 
             // Store the stock price in the variable to display it
             appleStockPrice = result["TSLA"][Field.RegularMarketPrice];
-        }
+            }
         catch (Exception ex)
         {
             // Handle any error and display an error message
             errorMessage = $"Error fetching stock data: {ex.Message}";
             Console.WriteLine(errorMessage);
-        }
+            }
         finally
         {
             loading = false; // Set loading to false when done
-        }
+            }
         */
-  
-}
-
 }

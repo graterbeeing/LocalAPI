@@ -1,106 +1,261 @@
-﻿
-@page "/Main_page"
+﻿@page "/Main_page"
 @using ClassLibrary;
 @using UseBD.Services;
 @inject User_service User_service;
 @inject HttpClient Http;
 @inject NavigationManager NavigationManager;
-@using System.Collections.Generic
-@using System.Linq
+@using System.Collections.Generic;
+@using System.Linq;
 @using BlazorBootstrap;
 
-graph
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <select class="form-select" @bind="selectedStock">
+                <option value="TSLA">Tesla (TSLA)</option>
+                <option value="MSFT">Microsoft (MSFT)</option>
+                <option value="AAPL">Apple (AAPL)</option>
+                <option value="GOOGL">Google (GOOGL)</option>
+                <option value="AMZN">Amazon (AMZN)</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" @bind="selectedDays">
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary" @onclick="HandleUpdateButtonClick" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>Loading...</span>
+                }
+                else
+                {
+                    <span>Update Chart</span>
+                }
+            </button>
+        </div>
+    </div>
 
-<div class="container-fluid overflow-x-auto">
-    <LineChart @ref="lineChart" Width="800" />
+    <div style="height: 400px;" class="overflow-auto">
+        @if (shouldRenderChart)
+        {
+            <LineChart @ref="lineChart" Width="800" />
+        }
+        else
+        {
+            <div class="d-flex justify-content-center align-items-center h-100">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+    </div>
 </div>
-<h1>@messege</h1>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-info") mt-3">
+        @message
+    </div>
+}
 
 @code {
-
     private LineChart lineChart = default!;
     private LineChartOptions lineChartOptions = default!;
     private ChartData chartData = default!;
     private YQuotesControl stock = new YQuotesControl();
-    private List<double> prices = new List<double>{};
-    private string messege = "ahhh";
-    private TaskCompletionSource<bool> dataLoaded = new TaskCompletionSource<bool>();
-
-
+    private List<double> prices = new List<double>();
+    private string message = "";
+    private bool isError = false;
+    private string selectedStock = "TSLA";
+    private int selectedDays = 20;
+    private bool shouldRenderChart = false;
+    private bool isLoading = false;
+    private int chartUpdateVersion = 0;
 
     protected override async Task OnInitializedAsync()
     {
-        var colors = ColorUtility.CategoricalTwelveColors;
+        await LoadStockDataAsync();
+    }
 
-        DateTime start = DateTime.Now.AddDays(-20);
+    private async Task HandleUpdateButtonClick()
+    {
+        if (isLoading) return;
 
-        prices = await stock.GetHistoricalClosingPricesAsync("MSFT",start);
-        if (prices.Count == 0)
+        chartUpdateVersion++; // Increment version to force refresh
+        await LoadStockDataAsync();
+    }
+
+    private async Task LoadStockDataAsync()
+    {
+        int currentVersion = chartUpdateVersion;
+
+        try
         {
-            Console.WriteLine("No historical data found for the specified date.");
-            return;
-        }
-        Console.WriteLine(prices.Count);
-        Console.WriteLine(prices[0]);
+            isLoading = true;
+            isError = false;
+            message = $"Loading {selectedStock} data for the last {selectedDays} days...";
 
+            // Remove chart from DOM
+            shouldRenderChart = false;
+            StateHasChanged();
 
-        var labels = new List<string> {"day 1","day 2", "day 3", "day 4", "day 5", "day 6", "day 7" };
-        var datasets = new List<IChartDataset>();
+            // Longer delay to ensure DOM updates completely
+            await Task.Delay(200);
 
-        var dataset1 = new LineChartDataset
+            // Check if we're still working on the latest request
+            if (currentVersion != chartUpdateVersion) return;
+
+            DateTime start = DateTime.Now.AddDays(-selectedDays);
+            prices = await stock.GetHistoricalClosingPricesAsync(selectedStock, start);
+
+            if (prices == null || prices.Count == 0)
             {
-                Label = "Windows",
-            //Data = new List<double?> { 7265791, 5899643, 6317759, 6315641, 5338211, 8496306, 7568556, 8538933, 8274297, 8657298, 7548388, 7764845 },
+                isError = true;
+                message = $"No historical data found for {selectedStock} in the last {selectedDays} days.";
+                StateHasChanged();
+                isLoading = false;
+                return;
+            }
 
-                Data = prices.Select(p => (double?)p).ToList(), // Convert to List<double?>
-                BackgroundColor = colors[0],
-                BorderColor = colors[0],
-                BorderWidth = 2,
-                HoverBorderWidth = 4,
-            // PointBackgroundColor = colors[0],
-            // PointRadius = 0, // hide points
-            // PointHoverRadius = 4,
-            };
-        datasets.Add(dataset1);
+            // Generate appropriate date labels
+            var labels = GenerateDateLabels(start, prices.Count);
 
+            var colors = ColorUtility.CategoricalTwelveColors;
+            var datasets = new List<IChartDataset>();
 
-        chartData = new ChartData { Labels = labels, Datasets = datasets };
+            var dataset1 = new LineChartDataset
+                {
+                    Label = selectedStock,
+                    Data = prices.Select(p => (double?)p).ToList(),
+                    BackgroundColor = colors[0],
+                    BorderColor = colors[0],
+                    BorderWidth = 2,
+                    HoverBorderWidth = 4,
+                // PointRadius and PointHoverRadius commented out as they caused issues
+                };
 
-        lineChartOptions = new();
+            datasets.Add(dataset1);
+            chartData = new ChartData { Labels = labels, Datasets = datasets };
 
-        lineChartOptions.Responsive = true;
-        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
+            // Configure chart options
+            lineChartOptions = new LineChartOptions
+                {
+                    Responsive = true,
+                    Interaction = new Interaction { Mode = InteractionMode.Index }
+                };
 
-        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "Time", Display = true };
-        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Stock price", Display = true };
+            // Configure axes
+            lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "Date", Display = true };
+            lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Price ($)", Display = true };
 
-        double minPrice = prices.Min();
-        double padding = minPrice * 0.05;
-        lineChartOptions.Scales.Y!.Min = minPrice - padding;
+            // Set Y-axis min with 5% padding
+            double minPrice = prices.Min();
+            double maxPrice = prices.Max();
+            double padding = (maxPrice - minPrice) * 0.1;
+            lineChartOptions.Scales.Y!.Min = Math.Max(0, minPrice - padding);
+            lineChartOptions.Scales.Y!.Max = maxPrice + padding;
 
-        lineChartOptions.Plugins.Title!.Text = "Operating system";
-        lineChartOptions.Plugins.Title.Display = true;
+            // Set chart title
+            lineChartOptions.Plugins.Title!.Text = $"{selectedStock} Stock Price - Last {selectedDays} Days";
+            lineChartOptions.Plugins.Title.Display = true;
 
-        dataLoaded.SetResult(true);
+            message = "";
 
+            // Re-add chart to DOM
+            shouldRenderChart = true;
+            StateHasChanged();
 
+            // Allow time for chart component to render before initializing
+            await Task.Delay(100);
 
+            // Check if we're still on the latest request
+            if (currentVersion != chartUpdateVersion) return;
+
+            if (lineChart != null)
+            {
+                await lineChart.InitializeAsync(chartData, lineChartOptions);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (currentVersion == chartUpdateVersion) // Only update UI if this is still the current request
+            {
+                isError = true;
+                message = $"Error loading chart data: {ex.Message}";
+                Console.WriteLine($"Error: {ex}");
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            if (currentVersion == chartUpdateVersion) // Only update loading state if this is still the current request
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private List<string> GenerateDateLabels(DateTime startDate, int dataPointCount)
+    {
+        var labels = new List<string>();
+
+        // Different labeling strategies based on the number of days
+        if (selectedDays <= 14)
+        {
+            // Show each day for shorter periods
+            for (int i = 0; i < dataPointCount; i++)
+            {
+                labels.Add(startDate.AddDays(i).ToString("MM/dd"));
+            }
+        }
+        else if (selectedDays <= 30)
+        {
+            // Show every other day for medium periods
+            int interval = Math.Max(1, dataPointCount / 10);
+            for (int i = 0; i < dataPointCount; i++)
+            {
+                if (i % interval == 0 || i == dataPointCount - 1)
+                {
+                    labels.Add(startDate.AddDays(i).ToString("MM/dd"));
+                }
+                else
+                {
+                    labels.Add("");
+                }
+            }
+        }
+        else
+        {
+            // Show weekly markers for longer periods
+            int interval = Math.Max(1, dataPointCount / 8);
+            for (int i = 0; i < dataPointCount; i++)
+            {
+                if (i % interval == 0 || i == dataPointCount - 1)
+                {
+                    labels.Add(startDate.AddDays(i).ToString("MM/dd"));
+                }
+                else
+                {
+                    labels.Add("");
+                }
+            }
+        }
+
+        return labels;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await dataLoaded.Task;
-            if (chartData == null)
-            {
-                Console.WriteLine("chartData is null. Cannot initialize chart.");
-                messege = "error: graph data could not load";
-                return;
-            }
-            await lineChart.InitializeAsync(chartData, lineChartOptions);
+            // No need to do anything in first render as LoadStockDataAsync handles it
         }
-        await base.OnAfterRenderAsync(firstRender);
     }
-
 }

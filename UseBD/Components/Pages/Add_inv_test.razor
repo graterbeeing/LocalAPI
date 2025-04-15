@@ -3,6 +3,7 @@
 @using UseBD.Model;
 @inject NavigationManager NavigationManager;
 @inject HttpClient Http
+@using ClassLibrary;
 
 <button @onclick="Back" style="padding:2px 15px">
     Back
@@ -12,19 +13,19 @@
 
 <div>
     <label>User ID: </label>
-    <input type="number" @bind="UserId" />
+    <input type="number" @bind="inv_body.user_id" />
 </div>
 <div>
     <label>Type ID: </label>
-    <input type="number" @bind="TypeId" />
+    <input type="number" @bind="inv_body.type_id" />
 </div>
 <div>
     <label>Option ID: </label>
-    <input type="number" @bind="OptionId" />
+    <input type="number" @bind="inv_body.option_id" />
 </div>
 <div>
     <label>Amount Invested: </label>
-    <input type="number" @bind="Amount" />
+    <input type="number" @bind="inv_body.amount_invested" />
 </div>
 <button @onclick="InsertInvestment">Insert Investment</button>
 
@@ -44,23 +45,26 @@
 <p>@Message2</p>
 
 @code {
-    private int UserId;
-    private int TypeId;
-    private int OptionId;
-    private int Amount;
     private string Message;
     private int removed;
     private string Message2;
+    private Investment inv_body = new();
+    private YFinanceControl stock = new YFinanceControl();
 
     private async Task InsertInvestment()
     {
+        if (await CalShare() != 1)
+        {
+            Message = "count of options in CalShare is not normal";
+            Console.WriteLine(inv_body);
+        }
         try
         {
             // Construct the API URL
-            string url = $"http://localhost:5210/api/Investment/insert_inv/{UserId}/{TypeId}/{OptionId}/{Amount}";
+            string url = $"http://localhost:5210/api/Investment/insert_inv";
 
             // Call the API using HttpClient
-            var response = await Http.GetAsync(url);
+            var response = await Http.PostAsJsonAsync(url,inv_body);
 
             if (response.IsSuccessStatusCode)
             {
@@ -110,7 +114,23 @@
         }
         catch
         {
-            
+
+        }
+    }
+
+    public async Task<double> CalShare()
+    {
+        decimal amount = inv_body.amount_invested;
+        string url = $"http://localhost:5210/api/Options/GetOptionId/{inv_body.option_id}";
+        List<OptionsData> op_lst = await Http.GetFromJsonAsync<List<OptionsData>>(url);
+        if(op_lst.Count == 1)
+        {
+            inv_body.shares = (double)amount/(double)await stock.GetSingle(op_lst[0].Symbol);
+            return 1;
+        }
+        else
+        {
+            return 0;
         }
     }
 }

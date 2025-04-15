@@ -1,61 +1,133 @@
 ﻿@page "/option-manager"
-@inject NavigationManager NavigationManager;
-<h3>Option_manager</h3>
+@inject NavigationManager NavigationManager
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http
+@inject HttpClient Http
+@using ClassLibrary;
 
-<button @onclick="Back" style="padding:2px 15px">
-    Back
-</button>
+<div class="container mt-4">
+    <h3>Investment Manager</h3>
 
-<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">
-    <DataAnnotationsValidator />
+    <button @onclick="Back" class="btn btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Back
+    </button>
 
-    <div class="form-group">
-        <label for="name">Name:</label>
-        <InputText id="name" @bind-Value="@formData.Name" class="form-control" />
-        <ValidationMessage For="@(() => formData.Name)" />
+    <div class="card">
+        <div class="card-header">
+            Add New Investment
+        </div>
+        <div class="card-body">
+            <EditForm Model="@request" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label for="symbol" class="form-label">Symbol:</label>
+                    <InputText id="symbol" @bind-Value="request.Optionsymbol" class="form-control" placeholder="e.g. TSLA, MSFT" />
+                    <ValidationMessage For="@(() => request.Optionsymbol)" />
+
+                </div>
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Full Name:</label>
+                    <InputText id="name" @bind-Value="request.StockName" class="form-control" placeholder="e.g. Tesla Inc, Microsoft Corporation" />
+                    <ValidationMessage For="@(() => request.StockName)" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="investmentType" class="form-label">Investment Type:</label>
+                    <InputSelect id="investmentType" @bind-Value="request.type" class="form-control">
+                        <option value="1">Stock</option>
+                        <option value="2">ETF</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => request.type)" />
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span>Processing...</span>
+                    }
+                    else
+                    {
+                        <span>Add Investment</span>
+                    }
+                </button>
+            </EditForm>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label for="option">Option:</label>
-        <InputSelect id="option" @bind-Value="@formData.Option" class="form-control">
-            <option value="1">1</option>
-            <option value="2">2</option>
-        </InputSelect>
-        <ValidationMessage For="@(() => formData.Option)" />
-    </div>
-
-    <button type="submit" >Submit</button>
-</EditForm>
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success") mt-3">
+            @message
+        </div>
+    }
+</div>
 
 @code {
-    public class FormData
-    {
-        public string Name { get; set; }
 
-        public string Option { get; set; } // Use string for dropdown values
-    }
 
-    private FormData formData = new FormData();
+    private OptionsRequest request = new OptionsRequest();
+    private List<OptionsData> op_list = new List<OptionsData>();
+    private bool isSubmitting = false;
+    private string message = "";
+    private bool isError = false;
 
-    private void HandleValidSubmit()
-    {
-        // need to handle duplicate stock symbols
-        //                   ^
-        //                   |
-        Console.WriteLine($"Name: {formData.Name}, Option: {formData.Option}");
 
-        // TODO: Process the form data (e.g., send to API)
-    }
-
-    protected async Task Back()
+    private async Task HandleValidSubmit()
     {
         try
         {
-            NavigationManager.NavigateTo("/user");
-        }
-        catch
-        {
+            isSubmitting = true;
+            message = "";
+            StateHasChanged();
+
+
+
+            string url = $"http://localhost:5210/api/Options/GetOptionsBySymbol/{request.Optionsymbol}";
+            op_list = await Http.GetFromJsonAsync<List<OptionsData>>(url);
+
+            if(op_list.Count == 0)
+            {
+                var response = await Http.PostAsJsonAsync("http://localhost:5210/api/Options/Insert_stock", request);
+                if (response.IsSuccessStatusCode)
+                {
+                    message = $"Added new {request.type}: {request.Optionsymbol} - {request.StockName}";
+                    message = $"Successfully added {request.Optionsymbol}";
+                    isError = false;
+                }
+                else
+                {
+                    message = "API request failed";
+                    Console.WriteLine(response);
+                    isError = true;
+                }
+            }
+            else
+            {
+                Console.WriteLine("match found");
+                message = $"{request.Optionsymbol} already exists in database";
+                isError = true;
+            }
+
 
         }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            isError = true;
+            Console.WriteLine($"Error: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Back()
+    {
+        NavigationManager.NavigateTo("/user");
     }
 }

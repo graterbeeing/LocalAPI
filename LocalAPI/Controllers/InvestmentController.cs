@@ -36,16 +36,17 @@ namespace LocalAPI.Controllers
 
 				while (reader.Read())
 				{
-					var city = new Investment
+					var inv = new Investment
 					{
 						inv_Id = reader.GetInt32(0),
 						user_id = reader.GetInt32(1),
 						type_id = reader.GetInt32(2),
 						option_id = reader.GetInt32(3),
 						amount_invested = reader.GetDecimal(4),
-						investment_date = reader.GetDateTime(5)
+						investment_date = reader.GetDateTime(5),
+						shares = reader.GetDouble(6)
 					};
-					investments.Add(city);
+					investments.Add(inv);
 				}
 
 				reader.Close();
@@ -74,16 +75,17 @@ namespace LocalAPI.Controllers
 
 				while (reader.Read())
 				{
-					Investment city = new Investment
+					Investment inv = new Investment
 					{
 						inv_Id = reader.GetInt32(0),
 						user_id = reader.GetInt32(1),
 						type_id = reader.GetInt32(2),
 						option_id = reader.GetInt32(3),
 						amount_invested = reader.GetDecimal(4),
-						investment_date = reader.GetDateTime(5)
+						investment_date = reader.GetDateTime(5),
+						shares = reader.GetDouble(6)
 					};
-					largeCities.Add(city); // הוספת העיר לרשימה
+					largeCities.Add(inv); // הוספת העיר לרשימה
 				}
 
 				reader.Close();
@@ -93,20 +95,21 @@ namespace LocalAPI.Controllers
 		}
 
 		// Get: investment/Get_users
-		[HttpGet("insert_inv/{user}/{type}/{option}/{amount}")]
-		public IActionResult insert_inv(int user, int type, int option, int amount)
+		[HttpPost("insert_inv")]
+        public async Task<IActionResult> Insert_inv([FromBody] Investment request)
 		{
 			using (MySqlConnection connection = _databaseService.GetConnection())
 			{
 				connection.Open();
 
 				// שאילתה שמחזירה ערים עם אוכלוסייה מעל המספר המינימלי
-				string query = "insert into inv_list (user_id, type_id, option_id,amount_invested,investment_date) values(@user,@type,@option,@amount,now())";
+				string query = "insert into inv_list (user_id, type_id, option_id,amount_invested,investment_date,shares) values(@user,@type,@option,@amount,now(),@shares)";
 				MySqlCommand command = new MySqlCommand(query, connection);
-				command.Parameters.AddWithValue("@user", user); // שימוש בפרמטר
-				command.Parameters.AddWithValue("@type", type);
-				command.Parameters.AddWithValue("@option", option);
-				command.Parameters.AddWithValue("@amount", amount);
+				command.Parameters.AddWithValue("@user", request.user_id); // שימוש בפרמטר
+				command.Parameters.AddWithValue("@type", request.type_id);
+				command.Parameters.AddWithValue("@option", request.option_id);
+				command.Parameters.AddWithValue("@amount", request.amount_invested);
+				command.Parameters.AddWithValue("@shares",request.shares);
 
 				MySqlDataReader reader = command.ExecuteReader();
 

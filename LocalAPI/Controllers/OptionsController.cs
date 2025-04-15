@@ -104,5 +104,71 @@ namespace LocalAPI.Controllers
             }
         }
 
+        [HttpGet("GetOptionId/{id}")]
+        public IActionResult GetOptionId(int id)
+        {
+            List<OptionsData> options = new List<OptionsData>();
+
+            using (MySqlConnection connection = _databaseService.GetConnection())
+            {
+                connection.Open();
+
+                // שאילתה שמחזירה ערים עם אוכלוסייה מעל המספר המינימלי
+                string query = "SELECT * FROM options_list where option_id = @id";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@id", id);
+
+                MySqlDataReader reader = command.ExecuteReader();
+                //under development (need to unhash the password and check
+
+
+                while (reader.Read())
+                {
+                    var Option = new OptionsData
+                    {
+                        Id = reader.GetInt32(0),
+                        Symbol = reader.GetString(1),
+                        type = reader.GetInt32(2)
+                    };
+                    options.Add(Option);
+
+                }
+
+                reader.Close();
+                return Ok(options);
+            }
+        }
+
+        [HttpGet("GetOptionsBySymbol/{symbol}")]
+        public IActionResult GetOptionsBySymbol(string symbol)
+        {
+            List<OptionsData> options = new List<OptionsData>();
+
+            using (MySqlConnection connection = _databaseService.GetConnection())
+            {
+                connection.Open();
+
+                string query = "SELECT * FROM options_list WHERE symbol = @symbol";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@symbol", symbol);
+
+                MySqlDataReader reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var option = new OptionsData
+                    {
+                        Id = reader.GetInt32(0),
+                        Symbol = reader.GetString(1),
+                        type = reader.GetInt32(2)
+                    };
+                    options.Add(option);
+                }
+
+                reader.Close();
+                return Ok(options);
+            }
+        }
+
     }
 }

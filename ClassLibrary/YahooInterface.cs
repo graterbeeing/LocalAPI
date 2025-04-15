@@ -9,5 +9,7 @@ namespace ClassLibrary
     interface YahooInterface
     {
         Task<List<double>> GetHistoricalClosingPricesAsync(string symbol, DateTime startDate);
+
+        Task<double?> GetSingle(string symbol);
     }
 }

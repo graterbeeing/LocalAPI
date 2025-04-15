@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using NodaTime;
 using YahooQuotesApi;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ClassLibrary
 {
@@ -34,5 +36,12 @@ namespace ClassLibrary
 
             return historical;
         }
+
+        public async Task<double?> GetSingle(string symbol)
+        {
+            return null;
+        }
     }
+
+    
 }
