@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity.Data;
 using Org.BouncyCastle.Asn1.Ocsp;
 using Microsoft.Extensions.Options;
+using System.Data;
 
 namespace LocalAPI.Controllers
 {
@@ -169,6 +170,41 @@ namespace LocalAPI.Controllers
                 return Ok(options);
             }
         }
+
+        [HttpGet("SearchLikeSymbol/{search?}")]
+        public async Task<IActionResult> SearchLikeSymbol(string? search)
+        {
+            try
+            {
+                using var connection = _databaseService.GetConnection();
+                await connection.OpenAsync();
+
+                var query = "SELECT * FROM options_list WHERE symbol LIKE @search";
+                using var command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@search", $"{search}%");
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                var result = new List<OptionsData>(); // Make sure OptionsData model matches your table
+
+                while (await reader.ReadAsync())
+                {
+                    result.Add(new OptionsData
+                    {
+                        Id = reader.GetInt32("option_id"),
+                        Symbol = reader.GetString("symbol"),
+                        type = reader.GetInt32("type_id")
+                    });
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Database error: {ex.Message}");
+            }
+        }
+
 
     }
 }

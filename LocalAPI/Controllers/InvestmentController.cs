@@ -121,7 +121,7 @@ namespace LocalAPI.Controllers
 
 		}
 		// httppost
-		[HttpGet("remove_inv/{inv_id}")]
+		[HttpDelete("remove_inv/{inv_id}")]
 		public IActionResult remove_inv(int inv_id)
 		{
 			using (MySqlConnection connection = _databaseService.GetConnection())

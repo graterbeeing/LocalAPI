@@ -1,0 +1,253 @@
+﻿@page "/stock_close-up/{id:int}"
+@using ClassLibrary;
+@using UseBD.Services;
+@inject User_service User_service;
+@inject HttpClient Http;
+@inject NavigationManager NavigationManager;
+@using System.Collections.Generic;
+@using System.Linq;
+@using BlazorBootstrap;
+
+
+
+<div class="container-fluid">
+    <h3>Stock Detail for ID: @id</h3>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(stockSymbol))
+    {
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>(@stockSymbol)</h4>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Last 20 Days Price History</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="height: 400px;" class="overflow-auto">
+            @if (shouldRenderChart)
+            {
+                <LineChart @ref="lineChart" Width="800" />
+            }
+            else
+            {
+                <div class="d-flex justify-content-center align-items-center h-100">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            Unable to find stock information for ID: @id
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-info") mt-3">
+        @message
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int? id { get; set; }
+
+    private LineChart lineChart = default!;
+    private LineChartOptions lineChartOptions = default!;
+    private ChartData chartData = default!;
+    private YQuotesControl stock = new YQuotesControl();
+    private List<double> prices = new List<double>();
+    private List<OptionsData> optionsData = new List<OptionsData>();
+    private string message = "";
+    private bool isError = false;
+    private string stockSymbol = "";
+    private int daysToShow = 20;
+    private bool shouldRenderChart = false;
+    private bool isLoading = true;
+
+
+
+    /*
+     * the last thing i think i need is so that this page will also see if the currently 
+     * registered user has the stock he is looking at and the program will show an extra 
+     * option to sell his investment
+     * 
+     * also need to find a way to change/ deleat the cashed investment to not show again
+     * maybe switch the user id to a dummy
+     * 
+     * extra changed to your hearts content
+     */
+
+
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStockDataAsync();
+    }
+
+    private async Task LoadStockDataAsync()
+    {
+        try
+        {
+            isLoading = true;
+            isError = false;
+            message = "Loading stock data...";
+            StateHasChanged();
+
+            // First, get the stock symbol from the ID using your API
+            await FetchStockSymbolFromId();
+
+            if (string.IsNullOrEmpty(stockSymbol))
+            {
+                isError = true;
+                message = $"No stock found with ID: {id}";
+                isLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Remove chart from DOM during loading
+            shouldRenderChart = false;
+            StateHasChanged();
+
+            // Fetch historical stock data
+            DateTime start = DateTime.Now.AddDays(-daysToShow);
+            prices = await stock.GetHistoricalClosingPricesAsync(stockSymbol, start);
+
+            if (prices == null || prices.Count == 0)
+            {
+                isError = true;
+                message = $"No historical data found for {stockSymbol} in the last {daysToShow} days.";
+                isLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Generate appropriate date labels
+            var labels = GenerateDateLabels(start, prices.Count);
+
+            var colors = ColorUtility.CategoricalTwelveColors;
+            var datasets = new List<IChartDataset>();
+
+            var dataset = new LineChartDataset
+                {
+                    Label = stockSymbol,
+                    Data = prices.Select(p => (double?)p).ToList(),
+                    BackgroundColor = colors[0],
+                    BorderColor = colors[0],
+                    BorderWidth = 2,
+                    HoverBorderWidth = 4,
+                };
+
+            datasets.Add(dataset);
+            chartData = new ChartData { Labels = labels, Datasets = datasets };
+
+            // Configure chart options
+            lineChartOptions = new LineChartOptions
+                {
+                    Responsive = true,
+                    Interaction = new Interaction { Mode = InteractionMode.Index }
+                };
+
+            // Configure axes
+            lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "Date", Display = true };
+            lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Price ($)", Display = true };
+
+            // Set Y-axis min with 10% padding
+            double minPrice = prices.Min();
+            double maxPrice = prices.Max();
+            double padding = (maxPrice - minPrice) * 0.1;
+            lineChartOptions.Scales.Y!.Min = Math.Max(0, minPrice - padding);
+            lineChartOptions.Scales.Y!.Max = maxPrice + padding;
+
+            // Set chart title
+            lineChartOptions.Plugins.Title!.Text = $"{stockSymbol} Stock Price - Last {daysToShow} Days";
+            lineChartOptions.Plugins.Title.Display = true;
+
+            message = "";
+
+            // Re-add chart to DOM
+            shouldRenderChart = true;
+            isLoading = false;
+            StateHasChanged();
+
+            // Allow time for chart component to render before initializing
+            await Task.Delay(100);
+
+            if (lineChart != null)
+            {
+                await lineChart.InitializeAsync(chartData, lineChartOptions);
+            }
+        }
+        catch (Exception ex)
+        {
+            isError = true;
+            message = $"Error loading chart data: {ex.Message}";
+            Console.WriteLine($"Error: {ex}");
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FetchStockSymbolFromId()
+    {
+        try
+        {
+            
+
+            string url = $"http://localhost:5210/api/Options/GetOptionId/{id}";
+            optionsData = await Http.GetFromJsonAsync<List<OptionsData>>(url);
+
+            stockSymbol = optionsData[0].Symbol;
+
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching stock symbol: {ex.Message}");
+            stockSymbol = "";
+        }
+    }
+
+    private List<string> GenerateDateLabels(DateTime startDate, int dataPointCount)
+    {
+        var labels = new List<string>();
+
+        // Show every other day for better readability
+        int interval = Math.Max(1, dataPointCount / 10);
+
+        for (int i = 0; i < dataPointCount; i++)
+        {
+            if (i % interval == 0 || i == dataPointCount - 1)
+            {
+                labels.Add(startDate.AddDays(i).ToString("MM/dd"));
+            }
+            else
+            {
+                labels.Add("");
+            }
+        }
+
+        return labels;
+    }
+}

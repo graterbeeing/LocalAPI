@@ -1,0 +1,124 @@
+﻿@page "/Inv_list"
+@inject HttpClient Http
+@using UseBD.Model
+@using UseBD.Services
+@inject User_service User_service
+@using ClassLibrary
+@inject NavigationManager NavigationManager
+
+<h3>Options Requests</h3>
+<div class="search-container d-flex mb-3">
+    <input type="text" @bind="searchTerm" placeholder="search by symbol..." class="form-control me-2" />
+    <button class="btn btn-primary" @onclick="LoadOptionsRequests">Search</button>
+</div>
+@if (optionsData == null || isLoading)
+{
+    <p>Loading...</p>
+}
+else if (optionsData.Count == 0)
+{
+    <p>No records found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in displayedItems)
+            {
+                <tr>
+                    <td>@item.Symbol</td>
+                    <td>@item.CurrentPrice</td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => ViewDetails(item.Id)">Details</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (optionsData.Count > 10)
+    {
+        <div class="mt-2">
+            <small class="text-muted">Showing 10 of @optionsData.Count results</small>
+        </div>
+    }
+}
+
+@code {
+    private List<OptionsData> optionsData;
+    private List<OptionsData> displayedItems => optionsData?.Take(10).ToList() ?? new List<OptionsData>();
+    private string searchTerm = "";
+    private YFinanceControl stock = new YFinanceControl();
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOptionsRequests();
+    }
+
+    private async Task LoadOptionsRequests()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // Call your API through the service, passing the search term
+            string url = $"http://localhost:5210/api/Options/SearchLikeSymbol/{searchTerm}";
+            var tempOptionsData = await Http.GetFromJsonAsync<List<OptionsData>>(url);
+
+            // Fetch prices for each item
+            foreach (var item in tempOptionsData)
+            {
+                try
+                {
+                    item.CurrentPrice = await stock.GetSingle(item.Symbol);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error getting price for {item.Symbol}: {ex.Message}");
+                    item.CurrentPrice = 0.0;
+                }
+            }
+
+            optionsData = tempOptionsData;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading options requests: {ex.Message}");
+            // Handle error appropriately
+            optionsData = new List<OptionsData>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<double?> GetCurrentPrice(string symbol)
+    {
+        try
+        {
+            // Get the current price using YFinanceControl
+            return await stock.GetSingle(symbol);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting price for {symbol}: {ex.Message}");
+            return 0.0; // Return default value in case of error
+        }
+    }
+
+    private void ViewDetails(int? id)
+    {
+        NavigationManager.NavigateTo($"/stock_close-up/{id}");
+    }
+}

@@ -16,15 +16,15 @@
             </button>
         </div>
         <div class="col-md-6">
-            <button type="button" class="button" style="height:100px;width:150px">
-                <i class="bi bi-person-circle"></i> Profile
+            <button @onclick = "Featured" type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Featured
             </button>
         </div>
     </div>
     <div class="row">
         <div class="col-md-6">
-            <button type="button" class="button" style="height:100px;width:150px">
-                <i class="bi bi-person-circle"></i> Settings
+            <button @onclick="Browse" type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Browse
             </button>
         </div>
         <div class="col-md-6">
@@ -76,5 +76,15 @@
     protected async Task Options()
     {
         NavigationManager.NavigateTo("/option-manager");
+    }
+
+    protected async Task Featured()
+    {
+        NavigationManager.NavigateTo("/Main_page");
+    }
+
+    protected async Task Browse()
+    {
+        NavigationManager.NavigateTo("/Inv_list");
     }
 }
