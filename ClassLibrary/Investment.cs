@@ -8,6 +8,6 @@
         public int? option_id { get; set; }
         public decimal amount_invested { get; set; }
         public DateTime? investment_date { get; set; }
-        public double shares {  get; set; }
+        public double? shares {  get; set; }
     }
 }

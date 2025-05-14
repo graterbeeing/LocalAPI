@@ -56,8 +56,8 @@ namespace LocalAPI.Controllers
 		}
 
 
-		// Get: investment/GetCitiesAbovePopulation/veriable
-		[HttpGet("GetUserInvestment/{user}")]
+        // Get: investment/GetUserInvestment/veriable
+        [HttpGet("GetUserInvestment/{user}")]
 		public IActionResult GetUserInvestment(int user)
 		{
 			List<Investment> largeCities = new List<Investment>(); // רשימה שתכיל את הערים

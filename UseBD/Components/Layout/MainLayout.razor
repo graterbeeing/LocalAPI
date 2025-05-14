@@ -5,7 +5,7 @@
 
 <div class="page">
     
-    @if (!Navigation.Uri.Contains("home_new"))  // Hide sidebar if on the home page
+    @if (!(Navigation.Uri.Contains("home_new") || Navigation.Uri.Contains("login") || Navigation.Uri.Contains("sign_in")))  // Hide sidebar if on the home page))  // Hide sidebar if on the home page)  // Hide sidebar if on the home page
     {
         <div style="background-image:none;background-color:darkslategrey" class="sidebar">
             <NavMenu />

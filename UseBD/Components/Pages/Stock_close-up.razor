@@ -1,14 +1,13 @@
 ﻿@page "/stock_close-up/{id:int}"
 @using ClassLibrary;
 @using UseBD.Services;
+@using UseBD.Model;
 @inject User_service User_service;
 @inject HttpClient Http;
 @inject NavigationManager NavigationManager;
 @using System.Collections.Generic;
 @using System.Linq;
 @using BlazorBootstrap;
-
-
 
 <div class="container-fluid">
     <h3>Stock Detail for ID: @id</h3>
@@ -34,7 +33,83 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Current Price: $@(current)</h4>
+                    </div>
+                    <div class="card-body">
+                        @if (userHasStock)
+                        {
+                            <div class="d-flex flex-column">
+                                <p><strong>You currently own shares of this stock.</strong></p>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-danger me-3" @onclick="SellInvestment">Sell Investment</button>
+                                    @{
+                                        double profit = CalculateProfit();
+                                        string profitClass = profit >= 0 ? "text-success" : "text-danger";
+                                        string profitSign = profit >= 0 ? "+" : "";
+                                    }
+                                    <span class="@profitClass"><strong>Profit: @(profitSign)$@(profit.ToString("F2"))</strong></span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <p><strong>Text 2:</strong> You don't own any shares of this stock.</p>
+                            <button class="btn btn-success" @onclick="() => showPurchaseForm = true">Button 2: Buy Investment</button>
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
+
+        @* Purchase form that appears when the Buy Investment button is clicked *@
+        @if (showPurchaseForm)
+        {
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h4>Purchase Stock</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="investmentAmount" class="form-label">Amount to Invest ($):</label>
+                                        <input type="number"
+                                               class="form-control @(investmentAmountInvalid ? "is-invalid" : "")"
+                                               id="investmentAmount"
+                                               @bind="new_investment.amount_invested"
+                                               @bind:event="oninput"
+                                               min="1"
+                                               step="0.01" />
+                                        @if (investmentAmountInvalid)
+                                        {
+                                            <div class="invalid-feedback">
+                                                Please enter a valid investment amount greater than 0.
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <button class="btn btn-success me-2" @onclick="SubmitPurchase" disabled="@(!IsValidPurchase())">
+                                        Confirm Purchase
+                                    </button>
+                                    <button class="btn btn-secondary" @onclick="() => showPurchaseForm = false">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
 
         <div style="height: 400px;" class="overflow-auto">
             @if (shouldRenderChart)
@@ -74,35 +149,204 @@
     private LineChartOptions lineChartOptions = default!;
     private ChartData chartData = default!;
     private YQuotesControl stock = new YQuotesControl();
+    private YFinanceControl Yfinance = new YFinanceControl();
     private List<double> prices = new List<double>();
+    private double? current = 0.0;
     private List<OptionsData> optionsData = new List<OptionsData>();
     private string message = "";
     private bool isError = false;
     private string stockSymbol = "";
+    private int? stockType = 0;
     private int daysToShow = 20;
     private bool shouldRenderChart = false;
     private bool isLoading = true;
-
-
-
-    /*
-     * the last thing i think i need is so that this page will also see if the currently 
-     * registered user has the stock he is looking at and the program will show an extra 
-     * option to sell his investment
-     * 
-     * also need to find a way to change/ deleat the cashed investment to not show again
-     * maybe switch the user id to a dummy
-     * 
-     * extra changed to your hearts content
-     */
-
-
-
-
+    private bool userHasStock = false;
+    private Investment user_investment = new Investment();
+    private bool showPurchaseForm = false;
+    private Investment new_investment = new Investment();
+    private bool investmentAmountInvalid = false;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadStockDataAsync();
+        await CheckUserOwnsStock();
+        InitializeNewInvestment();
+    }
+
+    private void InitializeNewInvestment()
+    {
+        new_investment = new Investment
+            {
+                option_id = id ?? 0,
+                user_id = User_service.UserId,
+                amount_invested = 0
+            };
+    }
+
+    private double CalculateProfit()
+    {
+        if (userHasStock && user_investment != null && current.HasValue)
+        {
+            // Calculate how much the current shares are worth
+            double currentValue = user_investment.shares.GetValueOrDefault() * current.Value;
+
+            // Calculate profit (current value minus original investment)
+            return currentValue - (double)user_investment.amount_invested;
+        }
+        return 0;
+    }
+
+    private bool IsValidPurchase()
+    {
+        if (new_investment.amount_invested <= 0)
+        {
+            investmentAmountInvalid = true;
+            return false;
+        }
+
+        investmentAmountInvalid = false;
+        return true;
+    }
+
+    private async Task SubmitPurchase()
+    {
+        if (!IsValidPurchase())
+        {
+            return;
+        }
+
+        try
+        {
+            message = "Processing purchase...";
+            isError = false;
+            StateHasChanged();
+
+            if (User_service.UserId > 0 && id.HasValue)
+            {
+                // Set the purchase data
+                new_investment.user_id = User_service.UserId;
+                new_investment.option_id = id.Value;
+                new_investment.type_id = stockType;
+                new_investment.shares = await CalShare();
+
+                // Call API to create the investment
+                string url = "http://localhost:5210/api/Investment/insert_inv";
+                var response = await Http.PostAsJsonAsync(url, new_investment);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    message = $"Successfully purchased shares for ${new_investment.amount_invested:F2}!";
+                    showPurchaseForm = false;
+                    userHasStock = true;
+                    // Refresh investment data
+                    await CheckUserOwnsStock();
+                }
+                else
+                {
+                    isError = true;
+                    message = $"Failed to complete purchase: {await response.Content.ReadAsStringAsync()}";
+                }
+            }
+            else
+            {
+                isError = true;
+                message = "User not logged in or invalid stock ID.";
+            }
+        }
+        catch (Exception ex)
+        {
+            isError = true;
+            message = $"Error completing purchase: {ex.Message}";
+        }
+    }
+
+    private async Task<double?> CalShare()
+    {
+        if (current.HasValue && current.Value > 0)
+        {
+            return (double)new_investment.amount_invested / current.Value;
+        }
+        return 0;
+    }
+
+    private async Task CheckUserOwnsStock()
+    {
+        try
+        {
+            // Get the current user ID from User_service or wherever it's stored
+            int currentUserId = User_service.UserId;
+
+            if (currentUserId > 0 && id.HasValue)
+            {
+                // Call API to check if user owns this stock
+                string url = $"http://localhost:5210/api/Investment/GetUserInvestment/{currentUserId}";
+                var result = await Http.GetFromJsonAsync<List<Investment>>(url);
+                if (result != null)
+                {
+                    foreach (var inv in result)
+                    {
+                        if (inv.option_id == id)
+                        {
+                            user_investment = inv;
+                            userHasStock = true;
+                            break; // stop after finding the first match
+                        }
+                    }
+                }
+            }
+            else
+            {
+                userHasStock = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking if user owns stock: {ex.Message}");
+            userHasStock = false;
+        }
+    }
+
+    private async Task SellInvestment()
+    {
+        // Placeholder for sell functionality
+        try
+        {
+            message = "Processing sale...";
+            isError = false;
+            StateHasChanged();
+
+            int currentUserId = User_service.UserId;
+
+            if (currentUserId > 0 && id.HasValue)
+            {
+                // Call API to sell the investment
+                // personal note not for AI: check later how i should handle the selling
+                string url = $"http://localhost:5210/api/Investment/remove_inv/{user_investment.inv_Id}";
+                var response = await Http.DeleteAsync(url);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    message = "Investment sold successfully!";
+                    // Update the UI state
+                    userHasStock = false;
+                }
+                else
+                {
+                    isError = true;
+                    message = $"Failed to sell: {await response.Content.ReadAsStringAsync()}";
+                }
+            }
+            else
+            {
+                isError = true;
+                message = "User not logged in or invalid stock ID.";
+            }
+        }
+        catch (Exception ex)
+        {
+            isError = true;
+            message = $"Error selling investment: {ex.Message}";
+        }
     }
 
     private async Task LoadStockDataAsync()
@@ -133,6 +377,7 @@
             // Fetch historical stock data
             DateTime start = DateTime.Now.AddDays(-daysToShow);
             prices = await stock.GetHistoricalClosingPricesAsync(stockSymbol, start);
+            current = await Yfinance.GetSingle(stockSymbol);
 
             if (prices == null || prices.Count == 0)
             {
@@ -213,14 +458,11 @@
     {
         try
         {
-            
-
             string url = $"http://localhost:5210/api/Options/GetOptionId/{id}";
             optionsData = await Http.GetFromJsonAsync<List<OptionsData>>(url);
 
             stockSymbol = optionsData[0].Symbol;
-
-            
+            stockType = optionsData[0].type;
         }
         catch (Exception ex)
         {

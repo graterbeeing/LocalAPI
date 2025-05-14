@@ -1,0 +1,88 @@
+﻿@page "/portfolio"
+@inject HttpClient Http
+@using UseBD.Model
+@using UseBD.Services
+@inject User_service User_service
+@using ClassLibrary
+@inject NavigationManager NavigationManager
+
+<h3>Owned Stocks</h3>
+
+@if (InvData == null || isLoading)
+{
+    <p>Loading...</p>
+}
+else if (InvData.Count == 0)
+{
+    <p>No records found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in optionsDatas)
+            {
+                <tr>
+                    <td>@item.Symbol</td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => ViewDetails(item.Id)">Details</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Investment> InvData;
+    private List<OptionsData> optionsDatas = new List<OptionsData>();
+    private List<OptionsData> TempoptionsDatas;
+    private YFinanceControl stock = new YFinanceControl();
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserInvestment();
+    }
+
+    private async Task LoadUserInvestment()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // Call your API to get user's stocks
+            string url = $"http://localhost:5210/api/investment/GetUserInvestment/{User_service.UserId}";
+            InvData = await Http.GetFromJsonAsync<List<Investment>>(url);
+            // Fetch prices for each item
+            foreach(var iten in InvData)
+            {
+                string url2 = $"http://localhost:5210/api/Options/GetOptionId/{iten.option_id}";
+                TempoptionsDatas = await Http.GetFromJsonAsync<List<OptionsData>>(url2);
+                optionsDatas.Add(TempoptionsDatas[0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading user stocks: {ex.Message}");
+            InvData = new List<Investment>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ViewDetails(int? id)
+    {
+        NavigationManager.NavigateTo($"/stock_close-up/{id}");
+    }
+}

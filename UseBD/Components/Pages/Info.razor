@@ -11,12 +11,12 @@
 <div class="container" style="width:320px">
     <div class="row" style="height:110px">
         <div class="col-md-6">
-            <button type="button" class="button" style="height:100px;width:150px">
+            <button @onclick="Exit" type="button" class="button" style="height:100px;width:150px">
                 <i class="bi bi-person-circle"></i> Home
             </button>
         </div>
         <div class="col-md-6">
-            <button @onclick = "Featured" type="button" class="button" style="height:100px;width:150px">
+            <button @onclick="Featured" type="button" class="button" style="height:100px;width:150px">
                 <i class="bi bi-person-circle"></i> Featured
             </button>
         </div>
@@ -28,8 +28,8 @@
             </button>
         </div>
         <div class="col-md-6">
-            <button type="button" class="button" style="height:100px;width:150px">
-                <i class="bi bi-person-circle"></i> Help
+            <button @onclick="Portfolio" type="button" class="button" style="height:100px;width:150px">
+                <i class="bi bi-person-circle"></i> Portfolio
             </button>
         </div>
     </div>
@@ -86,5 +86,15 @@
     protected async Task Browse()
     {
         NavigationManager.NavigateTo("/Inv_list");
+    }
+
+    protected async Task Portfolio()
+    {
+        NavigationManager.NavigateTo("/portfolio");
+    }
+
+    protected async Task Exit()
+    {
+        NavigationManager.NavigateTo("/exit");
     }
 }
