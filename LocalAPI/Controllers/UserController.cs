@@ -108,10 +108,28 @@ namespace LocalAPI.Controllers
         }
 
         // PUT api/<UserController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [HttpPut("update_username/{id}/{old_username}/{new_username}")]
+        public IActionResult Put(int id, string old_username, string new_username)
         {
+            using (MySqlConnection connection = _databaseService.GetConnection())
+            {
+                connection.Open();
+
+                string query = "UPDATE users SET username = @new_username WHERE user_id = @user_id AND username = @old_username";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@new_username", new_username);
+                command.Parameters.AddWithValue("@user_id", id);
+                command.Parameters.AddWithValue("@old_username", old_username);
+
+                int rowsAffected = command.ExecuteNonQuery();
+
+                if (rowsAffected > 0)
+                    return Ok("Username updated successfully.");
+                else
+                    return NotFound("User not found or old username doesn't match.");
+            }
         }
+
 
         // DELETE api/<UserController>/5
         [HttpDelete("{id}")]

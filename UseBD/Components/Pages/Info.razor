@@ -6,13 +6,12 @@
 @using ClassLibrary;
 @inject NavigationManager NavigationManager;
 
-<h4 style="text-align:center">in fact didn't change the adress anywhere else so can't be navigated to from sign in  </h4>
 
 <div class="container" style="width:320px">
     <div class="row" style="height:110px">
         <div class="col-md-6">
             <button @onclick="Exit" type="button" class="button" style="height:100px;width:150px">
-                <i class="bi bi-person-circle"></i> Home
+                <i class="bi bi-person-circle"></i> Change details
             </button>
         </div>
         <div class="col-md-6">
@@ -95,6 +94,6 @@
 
     protected async Task Exit()
     {
-        NavigationManager.NavigateTo("/exit");
+        NavigationManager.NavigateTo("/user_info");
     }
 }

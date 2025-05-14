@@ -1,0 +1,58 @@
+﻿@page "/user_info"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using UseBD.Model;
+@using UseBD.Services;
+@inject User_service User_service;
+@using ClassLibrary;
+
+
+<div class="container" style="width:320px">
+    <div class="row mb-3">
+        <div class="col-12 text-center">
+            <p><strong>Current Name:</strong> @currentName</p>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-12 text-center">
+            <input type="text" @bind="newName" placeholder="Enter new name" class="form-control" />
+            <button class="btn btn-primary" @onclick="ChangeName" style="height:50px; width:150px;">
+                Change Name
+            </button>
+            <label>@messege</label>
+        </div>
+    </div>
+
+</div>
+
+
+
+@code {
+
+    private string currentName = "banana bill";
+    private string newName = "";
+    private string messege = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentName = User_service.UserName;
+    }
+
+    
+    private async Task ChangeName()
+    {
+        string url = $"http://localhost:5210/api/User/update_username/{User_service.UserId}/{currentName}/{newName}";
+        var response = await Http.PutAsync(url, null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            messege = "Username updated successfully.";
+        }
+        else
+        {
+            messege = "Failed to update username.";
+        }
+    }
+}
+
+    
