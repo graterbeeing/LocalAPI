@@ -17,6 +17,14 @@ namespace ClassLibrary
 
         public async Task<List<double>> GetHistoricalClosingPricesAsync(string symbol, DateTime startDate)
         {
+            var result = await Yahoo
+                   .Symbols(symbol)
+                   .Fields(YahooFinanceApi.Field.RegularMarketPrice)
+                   .QueryAsync();
+            if(result.Count() > 0)
+            {
+                Console.WriteLine(result.GetType());
+            }
             return null;
         }
 

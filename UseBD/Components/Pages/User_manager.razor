@@ -1,0 +1,182 @@
+﻿@page "/user_manager"
+@inject HttpClient Http
+@using UseBD.Model
+@using UseBD.Services
+@inject User_service User_service
+@using ClassLibrary
+@inject NavigationManager NavigationManager
+
+<h3>User Management</h3>
+
+<div class="container">
+    <div class="row">
+        <!-- User list section (takes half the page) -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Users List</h4>
+                </div>
+                <div class="card-body user-list-container">
+                    @if (users == null || isLoading)
+                    {
+                        <p>Loading users...</p>
+                    }
+                    else if (users.Count == 0)
+                    {
+                        <p>No users found.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in users)
+                                {
+                                    <tr>
+                                        <td>@user.user_id</td>
+                                        <td>@user.username</td>
+                                        <td>@user.email</td>
+                                        <td>@(user.admin == 1 ? "Admin" : "User")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin controls section -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Admin Controls</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-group row">
+                        <div class="col-sm-6">
+                            <label for="userId">User ID:</label>
+                            <input type="number" class="form-control" id="userId" @bind="selectedUserId" />
+                        </div>
+                        <div class="col-sm-6 d-flex align-items-end">
+                            <button class="btn btn-primary" @onclick="MakeAdmin" disabled="@isProcessing">
+                                @if (isProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span> Processing...</span>
+                                }
+                                else
+                                {
+                                    <span>Change role</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert @messageClass mt-3">
+                            @message
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .user-list-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+
+@code {
+    private List<User> users;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private int selectedUserId;
+    private string message;
+    private string messageClass;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // Call API to get all users
+            string url = "http://localhost:5210/api/User";
+            users = await Http.GetFromJsonAsync<List<User>>(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+            users = new List<User>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task MakeAdmin()
+    {
+        if (selectedUserId <= 0)
+        {
+            ShowMessage("Please enter a valid user ID", "alert-warning");
+            return;
+        }
+
+        try
+        {
+            isProcessing = true;
+            StateHasChanged();
+
+            // Call API to make user an admin
+            string url = $"http://localhost:5210/api/Users/MakeAdmin/{selectedUserId}";
+            var response = await Http.PutAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ShowMessage("User has been granted admin privileges", "alert-success");
+                await LoadUsers(); // Refresh the user list
+            }
+            else
+            {
+                ShowMessage($"Failed to update user: {response.ReasonPhrase}", "alert-danger");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error: {ex.Message}", "alert-danger");
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowMessage(string text, string cssClass)
+    {
+        message = text;
+        messageClass = cssClass;
+        StateHasChanged();
+    }
+}

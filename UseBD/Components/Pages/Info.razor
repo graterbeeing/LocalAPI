@@ -40,7 +40,10 @@
         @* Center vertically *@
         <div class="d-flex flex-row">
             @* Vertical layout *@
-            
+            <button @onclick="Users" type="button" class="button" style="height:100px;width:150px;margin:20px">
+                @* Add margin bottom *@
+                <i class="bi bi-person-circle"></i> manage users
+            </button>
             <button @onclick="Investment" type="button" class="button" style="height:100px;width:150px;margin:20px">
                 <i class="bi bi-person-circle"></i> manage investments
             </button>
@@ -79,6 +82,11 @@
     protected async Task Options()
     {
         NavigationManager.NavigateTo("/option-manager");
+    }
+
+    protected async Task Users()
+    {
+        NavigationManager.NavigateTo("/user_manager");
     }
 
     protected async Task Featured()

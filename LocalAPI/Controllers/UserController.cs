@@ -22,6 +22,37 @@ namespace LocalAPI.Controllers
             _databaseService = databaseService;
         }
 
+        [HttpGet]
+        public IActionResult GetUsers()
+        {
+            List<User> Users = new List<User>();
+
+            using (MySqlConnection connection = _databaseService.GetConnection())
+            {
+                connection.Open();
+                string query = "SELECT * FROM users";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                MySqlDataReader reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var user = new User
+                    {
+                        user_id = reader.GetInt32(0),
+                        admin = reader.GetInt32(1),
+                        username = reader.GetString(2),
+                        email = reader.GetString(3),
+                        password = reader.GetString(4)
+                    };
+                    Users.Add(user);
+                }
+
+                reader.Close();
+            }
+
+            return Ok(Users);
+        }
+
         // GET: api/<UserController>
         [HttpGet("Find_user/{password}/{username}")]
         public IActionResult Find_users(string password, string username)
@@ -63,9 +94,6 @@ namespace LocalAPI.Controllers
                 reader.Close();
                 return Ok(users);
             }
-
-
-
         }
 
 
@@ -109,17 +137,52 @@ namespace LocalAPI.Controllers
 
         // PUT api/<UserController>/5
         [HttpPut("update_username/{id}/{old_username}/{new_username}")]
-        public IActionResult Put(int id, string old_username, string new_username)
+        public IActionResult update_username(int id, string old_username, string new_username)
         {
             using (MySqlConnection connection = _databaseService.GetConnection())
             {
                 connection.Open();
 
-                string query = "UPDATE users SET username = @new_username WHERE user_id = @user_id AND username = @old_username";
+                var query2 = "SELECT * FROM users where username = @username";
+                using var command2 = new MySqlCommand(query2, connection);
+                command2.Parameters.AddWithValue("@username", new_username);
+                MySqlDataReader reader = command2.ExecuteReader();
+
+                if (reader.HasRows)
+                {
+                    reader.Close();
+                    return BadRequest("username already in use");
+                }
+                else
+                {
+                    reader.Close();
+                    string query = "UPDATE users SET username = @new_username WHERE user_id = @user_id AND username = @old_username";
+                    MySqlCommand command = new MySqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@new_username", new_username);
+                    command.Parameters.AddWithValue("@user_id", id);
+                    command.Parameters.AddWithValue("@old_username", old_username);
+
+                    int rowsAffected = command.ExecuteNonQuery();
+
+                    if (rowsAffected > 0)
+                        return Ok("Username updated successfully.");
+                    else
+                        return NotFound("User not found or old username doesn't match.");
+                }
+            }
+        }
+
+        [HttpPut("Update_Email/{id}/{new_Email}")]
+        public IActionResult Update_Email(int id, string new_email)
+        {
+            using (MySqlConnection connection = _databaseService.GetConnection())
+            {
+                connection.Open();
+
+                string query = "UPDATE users SET email = @new_email WHERE user_id = @user_id";
                 MySqlCommand command = new MySqlCommand(query, connection);
-                command.Parameters.AddWithValue("@new_username", new_username);
+                command.Parameters.AddWithValue("@new_email", new_email);
                 command.Parameters.AddWithValue("@user_id", id);
-                command.Parameters.AddWithValue("@old_username", old_username);
 
                 int rowsAffected = command.ExecuteNonQuery();
 
@@ -127,6 +190,39 @@ namespace LocalAPI.Controllers
                     return Ok("Username updated successfully.");
                 else
                     return NotFound("User not found or old username doesn't match.");
+            }
+        }
+
+        [HttpPut("MakeAdmin/{id}/{current_role}")]
+        public IActionResult MakeAdmin(int id, int current_role)
+        {
+            using (MySqlConnection connection = _databaseService.GetConnection())
+            {
+                connection.Open();
+                if(current_role == 0)
+                {
+                    string query = "UPDATE users SET admin = 1 WHERE user_id = @user_id";
+                    MySqlCommand command = new MySqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@user_id", id);
+                    int rowsAffected = command.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                        return Ok("Username updated successfully.");
+                    else
+                        return NotFound("User not found or old username doesn't match.");
+                }
+                else
+                {
+                    string query = "UPDATE users SET admin = 0 WHERE user_id = @user_id";
+                    MySqlCommand command = new MySqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@user_id", id);
+                    int rowsAffected = command.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                        return Ok("Username updated successfully.");
+                    else
+                        return NotFound("User not found or old username doesn't match.");
+                }
+                
+                
             }
         }
 

@@ -10,34 +10,125 @@
 
 @if (InvData == null || isLoading)
 {
-    <p>Loading...</p>
+    <div class="d-flex justify-content-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
 }
 else if (InvData.Count == 0)
 {
-    <p>No records found.</p>
+    <div class="alert alert-info">
+        <p>No investments found. Ready to start investing?</p>
+    </div>
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Symbol</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in optionsDatas)
-            {
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
                 <tr>
-                    <td>@item.Symbol</td>
-                    <td>
-                        <button class="btn btn-primary" @onclick="() => ViewDetails(item.Id)">Details</button>
-                    </td>
+                    <th>Symbol</th>
+                    <th>Shares</th>
+                    <th>Current Price</th>
+                    <th>Invested</th>
+                    <th>Current Value</th>
+                    <th>Profit</th>
+                    <th>Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var investment in InvData)
+                {
+                    var option = optionsDatas.FirstOrDefault(o => o.Id == investment.option_id);
+                    if (option != null)
+                    {
+                        double profit = CalculateProfit(investment, option);
+                        string profitClass = profit >= 0 ? "text-success" : "text-danger";
+                        string profitSign = profit >= 0 ? "+" : "";
+                        double currentValue = investment.shares.GetValueOrDefault() * (option.CurrentPrice ?? 0);
+
+                        <tr>
+                            <td>@option.Symbol</td>
+                            <td>@investment.shares?.ToString("F2")</td>
+                            <td>$@(option.CurrentPrice?.ToString("F2") ?? "N/A")</td>
+                            <td>$@investment.amount_invested.ToString("F2")</td>
+                            <td>$@currentValue.ToString("F2")</td>
+                            <td class="@profitClass"><strong>@(profitSign)$@profit.ToString("F2")</strong></td>
+                            <td>
+                                <button class="btn btn-primary" @onclick="() => ViewDetails(option.Id)">Details</button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
 }
+
+<div class="footer">
+    <div class="container-fluid px-4">
+        <div class="row justify-content-center">
+            <div class="col-md-3 col-sm-12 mb-2 mb-md-0">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">Total Investments</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text fs-4">@InvData?.Count</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">Total Amount Invested</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text fs-4">$@totalInvested.ToString("F2")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">Total Profit</h5>
+                    </div>
+                    <div class="card-body">
+                        @{
+                            string totalProfitClass = totalProfit >= 0 ? "text-success" : "text-danger";
+                            string totalProfitSign = totalProfit >= 0 ? "+" : "";
+                        }
+                        <p class="card-text fs-4 @totalProfitClass">
+                            @(totalProfitSign)$@Math.Abs(totalProfit).ToString("F2")
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        background-color: #f8f9fa;
+        padding: 15px 0;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+    }
+
+    .card {
+        margin-bottom: 0;
+    }
+
+    .table-responsive {
+        margin-bottom: 120px; /* Space for the footer */
+    }
+
+</style>
 
 @code {
     private List<Investment> InvData;
@@ -45,6 +136,8 @@ else
     private List<OptionsData> TempoptionsDatas;
     private YFinanceControl stock = new YFinanceControl();
     private bool isLoading = false;
+    private double totalInvested = 0;
+    private double totalProfit = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -61,17 +154,39 @@ else
             // Call your API to get user's stocks
             string url = $"http://localhost:5210/api/investment/GetUserInvestment/{User_service.UserId}";
             InvData = await Http.GetFromJsonAsync<List<Investment>>(url);
-            // Fetch prices for each item
-            foreach(var iten in InvData)
+
+            // Reset totals
+            totalInvested = 0;
+            totalProfit = 0;
+            optionsDatas.Clear();
+
+            if (InvData != null && InvData.Count > 0)
             {
-                string url2 = $"http://localhost:5210/api/Options/GetOptionId/{iten.option_id}";
-                TempoptionsDatas = await Http.GetFromJsonAsync<List<OptionsData>>(url2);
-                optionsDatas.Add(TempoptionsDatas[0]);
+                // Fetch options data for each investment
+                foreach (var item in InvData)
+                {
+                    string url2 = $"http://localhost:5210/api/Options/GetOptionId/{item.option_id}";
+                    TempoptionsDatas = await Http.GetFromJsonAsync<List<OptionsData>>(url2);
+
+                    if (TempoptionsDatas != null && TempoptionsDatas.Count > 0)
+                    {
+                        TempoptionsDatas[0].CurrentPrice = await stock.GetSingle(TempoptionsDatas[0].Symbol);
+                        var option = TempoptionsDatas[0];
+                        optionsDatas.Add(option);
+
+                        // Calculate investment amount
+                        totalInvested += (double)item.amount_invested;
+
+                        // Calculate profit for this investment
+                        double profit = CalculateProfit(item, option);
+                        totalProfit += profit;
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading user stocks: {ex.Message}");
+            Console.WriteLine($"Error loading user investments: {ex.Message}");
             InvData = new List<Investment>();
         }
         finally
@@ -81,8 +196,23 @@ else
         }
     }
 
+    private double CalculateProfit(Investment investment, OptionsData option)
+    {
+        if (investment == null || option == null || !option.CurrentPrice.HasValue)
+            return 0;
+
+        // Calculate how much the current shares are worth
+        double currentValue = investment.shares.GetValueOrDefault() * option.CurrentPrice.Value;
+
+        // Calculate profit (current value minus original investment)
+        return currentValue - (double)investment.amount_invested;
+    }
+
     private void ViewDetails(int? id)
     {
-        NavigationManager.NavigateTo($"/stock_close-up/{id}");
+        if (id.HasValue)
+        {
+            NavigationManager.NavigateTo($"/stock_close-up/{id}");
+        }
     }
 }
