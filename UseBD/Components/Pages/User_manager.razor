@@ -6,98 +6,110 @@
 @using ClassLibrary
 @inject NavigationManager NavigationManager
 
-<h3>User Management</h3>
+@if (User_service.Role == 1)
+{
+    <h3>User Management</h3>
 
-<div class="container">
-    <div class="row">
-        <!-- User list section (takes half the page) -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Users List</h4>
-                </div>
-                <div class="card-body user-list-container">
-                    @if (users == null || isLoading)
-                    {
-                        <p>Loading users...</p>
-                    }
-                    else if (users.Count == 0)
-                    {
-                        <p>No users found.</p>
-                    }
-                    else
-                    {
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Username</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var user in users)
-                                {
+    <div class="container">
+        <div class="row">
+            <!-- User list section (takes half the page) -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Users List</h4>
+                    </div>
+                    <div class="card-body user-list-container">
+                        @if (users == null || isLoading)
+                        {
+                            <p>Loading users...</p>
+                        }
+                        else if (users.Count == 0)
+                        {
+                            <p>No users found.</p>
+                        }
+                        else
+                        {
+                            <table class="table table-striped">
+                                <thead>
                                     <tr>
-                                        <td>@user.user_id</td>
-                                        <td>@user.username</td>
-                                        <td>@user.email</td>
-                                        <td>@(user.admin == 1 ? "Admin" : "User")</td>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in users)
+                                    {
+                                        <tr>
+                                            <td>@user.user_id</td>
+                                            <td>@user.username</td>
+                                            <td>@user.email</td>
+                                            <td>@(user.admin == 1 ? "Admin" : "User")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Admin controls section -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Admin Controls</h4>
-                </div>
-                <div class="card-body">
-                    <div class="form-group row">
-                        <div class="col-sm-6">
-                            <label for="userId">User ID:</label>
-                            <input type="number" class="form-control" id="userId" @bind="selectedUserId" />
-                        </div>
-                        <div class="col-sm-6 d-flex align-items-end">
-                            <button class="btn btn-primary" @onclick="MakeAdmin" disabled="@isProcessing">
-                                @if (isProcessing)
-                                {
-                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                    <span> Processing...</span>
-                                }
-                                else
-                                {
-                                    <span>Change role</span>
-                                }
-                            </button>
-                        </div>
+            <!-- Admin controls section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Admin Controls</h4>
                     </div>
-
-                    @if (!string.IsNullOrEmpty(message))
-                    {
-                        <div class="alert @messageClass mt-3">
-                            @message
+                    <div class="card-body">
+                        <div class="form-group row">
+                            <div class="col-sm-6">
+                                <label for="userId">User ID:</label>
+                                <input type="number" class="form-control" id="userId" @bind="selectedUserId" />
+                            </div>
+                            <div class="col-sm-6 d-flex align-items-end">
+                                <button class="btn btn-primary" @onclick="MakeAdmin" disabled="@isProcessing">
+                                    @if (isProcessing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span> Processing...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Change role</span>
+                                    }
+                                </button>
+                            </div>
                         </div>
-                    }
+
+                        @if (!string.IsNullOrEmpty(message))
+                        {
+                            <div class="alert @messageClass mt-3">
+                                @message
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<style>
-    .user-list-container {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-</style>
+    <style>
+        .user-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+}
+else
+{
+    <div style="text-align: center; margin-top: 50px;">
+        <h3 style="color: red;">You don't have the right authorization</h3>
+        <button @onclick="NavigateToHome" style="padding: 10px 20px; margin-top: 20px;">
+            Go to back
+        </button>
+    </div>
+}
 
 @code {
     private List<User> users;
@@ -107,9 +119,17 @@
     private string message;
     private string messageClass;
 
+    private void NavigateToHome()
+    {
+        NavigationManager.NavigateTo("/user");
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadUsers();
+        if (User_service.Role == 1)
+        {
+            await LoadUsers();
+        }
     }
 
     private async Task LoadUsers()

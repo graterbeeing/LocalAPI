@@ -77,7 +77,8 @@ namespace LocalAPI.Controllers
                     string stored_pass = reader.GetString(4);
                     if(!VerifyPassword(password, stored_pass))
                     {
-                        return Unauthorized("Invalid email or password.");
+                        User user = new User();
+                        return Ok(users);
                     }
                     else
                     {

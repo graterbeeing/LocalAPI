@@ -57,6 +57,7 @@
         Console.WriteLine("entering function log_in");
         string url = $"http://localhost:5210/api/User/Find_user/{password}/{username}";
         Users = await Http.GetFromJsonAsync<List<User>>(url);
+        Console.WriteLine(Users);
         if (Users.Count == 1)
         {
             pass_vis = false;

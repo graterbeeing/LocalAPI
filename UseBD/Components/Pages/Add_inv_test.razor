@@ -4,45 +4,52 @@
 @inject NavigationManager NavigationManager;
 @inject HttpClient Http
 @using ClassLibrary;
+@using UseBD.Services
+@inject User_service User_service
 
-<button @onclick="Back" style="padding:2px 15px">
-    Back
-</button>
-
-<h3>Insert Investment</h3>
-
-<div>
-    <label>User ID: </label>
-    <input type="number" @bind="inv_body.user_id" />
-</div>
-<div>
-    <label>Type ID: </label>
-    <input type="number" @bind="inv_body.type_id" />
-</div>
-<div>
-    <label>Option ID: </label>
-    <input type="number" @bind="inv_body.option_id" />
-</div>
-<div>
-    <label>Amount Invested: </label>
-    <input type="number" @bind="inv_body.amount_invested" />
-</div>
-<button @onclick="InsertInvestment">Insert Investment</button>
-
-<p>@Message</p>
-
-<br>
-<br>
-<br>
-
-<div>
-    <label>investment_id to remove: </label>
-    <input type="number" @bind="removed" />
-</div>
-
-<button @onclick="remove">remove Investment</button>
-
-<p>@Message2</p>
+@if (User_service.Role == 1)
+{
+    <button @onclick="Back" style="padding:2px 15px">
+        Back
+    </button>
+    <h3>Insert Investment</h3>
+    <div>
+        <label>User ID: </label>
+        <input type="number" @bind="inv_body.user_id" />
+    </div>
+    <div>
+        <label>Type ID: </label>
+        <input type="number" @bind="inv_body.type_id" />
+    </div>
+    <div>
+        <label>Option ID: </label>
+        <input type="number" @bind="inv_body.option_id" />
+    </div>
+    <div>
+        <label>Amount Invested: </label>
+        <input type="number" @bind="inv_body.amount_invested" />
+    </div>
+    <button @onclick="InsertInvestment">Insert Investment</button>
+    <p>@Message</p>
+    <br>
+    <br>
+    <br>
+    <div>
+        <label>investment_id to remove: </label>
+        <input type="number" @bind="removed" />
+    </div>
+    <button @onclick="remove">remove Investment</button>
+    <p>@Message2</p>
+}
+else
+{
+    <div style="text-align: center; margin-top: 50px;">
+        <h3 style="color: red;">You don't have the right authorization</h3>
+        <button @onclick="NavigateToHome" style="padding: 10px 20px; margin-top: 20px;">
+            Go to back
+        </button>
+    </div>
+}
 
 @code {
     private string Message;
@@ -50,6 +57,13 @@
     private string Message2;
     private Investment inv_body = new();
     private YFinanceControl stock = new YFinanceControl();
+
+
+
+    private void NavigateToHome()
+    {
+        NavigationManager.NavigateTo("/user");
+    }
 
     private async Task InsertInvestment()
     {
@@ -62,10 +76,8 @@
         {
             // Construct the API URL
             string url = $"http://localhost:5210/api/Investment/insert_inv";
-
             // Call the API using HttpClient
-            var response = await Http.PostAsJsonAsync(url,inv_body);
-
+            var response = await Http.PostAsJsonAsync(url, inv_body);
             if (response.IsSuccessStatusCode)
             {
                 Message = "Investment inserted successfully!";
@@ -87,17 +99,15 @@
         {
             // Construct the API URL
             string url = $"http://localhost:5210/api/Investment/remove_inv/{removed}";
-
             // Call the API using HttpClient
             var response = await Http.GetAsync(url);
-
             if (response.IsSuccessStatusCode)
             {
-                Message2 = "Investment inserted successfully!";
+                Message2 = "Investment removed successfully!";
             }
             else
             {
-                Message2 = $"Failed to insert investment: {response.ReasonPhrase}";
+                Message2 = $"Failed to remove investment: {response.ReasonPhrase}";
             }
         }
         catch (Exception ex)
@@ -114,7 +124,6 @@
         }
         catch
         {
-
         }
     }
 
@@ -123,9 +132,9 @@
         decimal amount = inv_body.amount_invested;
         string url = $"http://localhost:5210/api/Options/GetOptionId/{inv_body.option_id}";
         List<OptionsData> op_lst = await Http.GetFromJsonAsync<List<OptionsData>>(url);
-        if(op_lst.Count == 1)
+        if (op_lst.Count == 1)
         {
-            inv_body.shares = (double)amount/(double)await stock.GetSingle(op_lst[0].Symbol);
+            inv_body.shares = (double)amount / (double)await stock.GetSingle(op_lst[0].Symbol);
             return 1;
         }
         else
@@ -134,4 +143,3 @@
         }
     }
 }
-

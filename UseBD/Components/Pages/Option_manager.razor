@@ -4,76 +4,90 @@
 @using System.Net.Http
 @inject HttpClient Http
 @using ClassLibrary;
+@using UseBD.Services
+@inject User_service User_service
 
-<div class="container mt-4">
-    <h3>Investment Manager</h3>
+@if (User_service.Role == 1)
+{
+    <div class="container mt-4">
+        <h3>Investment Manager</h3>
 
-    <button @onclick="Back" class="btn btn-outline-secondary mb-3">
-        <i class="bi bi-arrow-left"></i> Back
-    </button>
+        <button @onclick="Back" class="btn btn-outline-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Back
+        </button>
 
-    <div class="card">
-        <div class="card-header">
-            Add New Investment
+        <div class="card">
+            <div class="card-header">
+                Add New Investment
+            </div>
+            <div class="card-body">
+                <EditForm Model="@request" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label for="symbol" class="form-label">Symbol:</label>
+                        <InputText id="symbol" @bind-Value="request.Optionsymbol" class="form-control" placeholder="e.g. TSLA, MSFT" />
+                        <ValidationMessage For="@(() => request.Optionsymbol)" />
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name:</label>
+                        <InputText id="name" @bind-Value="request.StockName" class="form-control" placeholder="e.g. Tesla Inc, Microsoft Corporation" />
+                        <ValidationMessage For="@(() => request.StockName)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="investmentType" class="form-label">Investment Type:</label>
+                        <InputSelect id="investmentType" @bind-Value="request.type" class="form-control">
+                            <option value="1">Stock</option>
+                            <option value="2">ETF</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => request.type)" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span>Processing...</span>
+                        }
+                        else
+                        {
+                            <span>Add Investment</span>
+                        }
+                    </button>
+                </EditForm>
+            </div>
         </div>
-        <div class="card-body">
-            <EditForm Model="@request" OnValidSubmit="@HandleValidSubmit">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
 
-                <div class="mb-3">
-                    <label for="symbol" class="form-label">Symbol:</label>
-                    <InputText id="symbol" @bind-Value="request.Optionsymbol" class="form-control" placeholder="e.g. TSLA, MSFT" />
-                    <ValidationMessage For="@(() => request.Optionsymbol)" />
-
-                </div>
-
-                <div class="mb-3">
-                    <label for="name" class="form-label">Full Name:</label>
-                    <InputText id="name" @bind-Value="request.StockName" class="form-control" placeholder="e.g. Tesla Inc, Microsoft Corporation" />
-                    <ValidationMessage For="@(() => request.StockName)" />
-                </div>
-
-                <div class="mb-3">
-                    <label for="investmentType" class="form-label">Investment Type:</label>
-                    <InputSelect id="investmentType" @bind-Value="request.type" class="form-control">
-                        <option value="1">Stock</option>
-                        <option value="2">ETF</option>
-                    </InputSelect>
-                    <ValidationMessage For="@(() => request.type)" />
-                </div>
-
-                <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
-                    @if (isSubmitting)
-                    {
-                        <span>Processing...</span>
-                    }
-                    else
-                    {
-                        <span>Add Investment</span>
-                    }
-                </button>
-            </EditForm>
-        </div>
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert @(isError ? "alert-danger" : "alert-success") mt-3">
+                @message
+            </div>
+        }
     </div>
-
-    @if (!string.IsNullOrEmpty(message))
-    {
-        <div class="alert @(isError ? "alert-danger" : "alert-success") mt-3">
-            @message
-        </div>
-    }
-</div>
+}
+else
+{
+    <div style="text-align: center; margin-top: 50px;">
+        <h3 style="color: red;">You don't have the right authorization</h3>
+        <button @onclick="Back" style="padding: 10px 20px; margin-top: 20px;">
+            Go to back
+        </button>
+    </div>
+}
 
 @code {
-
-
     private OptionsRequest request = new OptionsRequest();
     private List<OptionsData> op_list = new List<OptionsData>();
     private bool isSubmitting = false;
     private string message = "";
     private bool isError = false;
-
+    private YQuotesControl stock = new YQuotesControl();
+    private YFinanceControl Yfinance = new YFinanceControl();
+    DateTime start = DateTime.Now.AddDays(-10);
 
     private async Task HandleValidSubmit()
     {
@@ -83,17 +97,24 @@
             message = "";
             StateHasChanged();
 
-
-
             string url = $"http://localhost:5210/api/Options/GetOptionsBySymbol/{request.Optionsymbol}";
             op_list = await Http.GetFromJsonAsync<List<OptionsData>>(url);
 
-            if(op_list.Count == 0)
+            if (op_list.Count == 0)
             {
+                // Validate stock data exists before inserting
+                bool stockDataExists = await ValidateStockData(request.Optionsymbol);
+
+                if (!stockDataExists)
+                {
+                    message = $"Unable to find valid stock data for symbol: {request.Optionsymbol}. Please verify the symbol exists.";
+                    isError = true;
+                    return;
+                }
+
                 var response = await Http.PostAsJsonAsync("http://localhost:5210/api/Options/Insert_stock", request);
                 if (response.IsSuccessStatusCode)
                 {
-                    message = $"Added new {request.type}: {request.Optionsymbol} - {request.StockName}";
                     message = $"Successfully added {request.Optionsymbol}";
                     isError = false;
                 }
@@ -110,8 +131,6 @@
                 message = $"{request.Optionsymbol} already exists in database";
                 isError = true;
             }
-
-
         }
         catch (Exception ex)
         {
@@ -123,6 +142,27 @@
         {
             isSubmitting = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task<bool> ValidateStockData(string symbol)
+    {
+        try
+        {
+            // Test both YFinanceControl and YQuotesControl
+            double? currentPrice = await Yfinance.GetSingle(symbol);
+            List<double> historicalPrices = await stock.GetHistoricalClosingPricesAsync(symbol, start);
+
+            // Check if we got valid data from both sources
+            bool hasCurrentPrice = currentPrice.HasValue && currentPrice.Value > 0;
+            bool hasHistoricalData = historicalPrices != null && historicalPrices.Count > 0;
+
+            return hasCurrentPrice && hasHistoricalData;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error validating stock data for {symbol}: {ex.Message}");
+            return false;
         }
     }
 
