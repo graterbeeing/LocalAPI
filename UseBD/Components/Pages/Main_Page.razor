@@ -11,13 +11,62 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-md-4">
-            <select class="form-select" @bind="selectedStock">
-                <option value="TSLA">Tesla (TSLA)</option>
-                <option value="MSFT">Microsoft (MSFT)</option>
-                <option value="AAPL">Apple (AAPL)</option>
-                <option value="GOOGL">Google (GOOGL)</option>
-                <option value="AMZN">Amazon (AMZN)</option>
-            </select>
+            <div class="dropdown">
+                <input type="text"
+                       class="form-control dropdown-toggle"
+                       @bind="searchTerm"
+                       @oninput="OnSearchInput"
+                       @onfocus="ShowDropdown"
+                       @onblur="HideDropdownDelayed"
+                       placeholder="Search stocks..."
+                       autocomplete="off"
+                       readonly="@isLoadingStocks" />
+
+                @if (showDropdown && filteredStocks.Any())
+                {
+                    <div class="dropdown-menu show" style="max-height: 200px; overflow-y: auto; width: 100%;">
+                        @foreach (var stock in filteredStocks.Take(10))
+                        {
+                            <a class="dropdown-item"
+                               href="#"
+                               @onmousedown="@(() => SelectStock(stock))"
+                               @onmousedown:preventDefault="true">
+                                <strong>@stock.Symbol</strong>
+                            </a>
+                        }
+                        @if (filteredStocks.Count > 10)
+                        {
+                            <div class="dropdown-item-text text-muted small">
+                                ... and @(filteredStocks.Count - 10) more results
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (isLoadingStocks)
+                {
+                    <div class="dropdown-menu show">
+                        <div class="dropdown-item-text">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Loading stocks...
+                        </div>
+                    </div>
+                }
+
+                @if (!isLoadingStocks && !string.IsNullOrEmpty(searchTerm) && !filteredStocks.Any())
+                {
+                    <div class="dropdown-menu show">
+                        <div class="dropdown-item-text text-muted">
+                            No stocks found matching "@searchTerm"
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (selectedStockInfo != null)
+            {
+                <small class="text-muted">Selected: @selectedStockInfo.Symbol</small>
+            }
         </div>
         <div class="col-md-4">
             <select class="form-select" @bind="selectedDays">
@@ -28,7 +77,7 @@
             </select>
         </div>
         <div class="col-md-4">
-            <button class="btn btn-primary" @onclick="HandleUpdateButtonClick" disabled="@isLoading">
+            <button class="btn btn-primary" @onclick="HandleUpdateButtonClick" disabled="@(isLoading || selectedStockInfo == null)">
                 @if (isLoading)
                 {
                     <span>Loading...</span>
@@ -65,6 +114,7 @@
 }
 
 @code {
+    // Chart related properties
     private LineChart lineChart = default!;
     private LineChartOptions lineChartOptions = default!;
     private ChartData chartData = default!;
@@ -72,20 +122,144 @@
     private List<double> prices = new List<double>();
     private string message = "";
     private bool isError = false;
-    private string selectedStock = "TSLA";
     private int selectedDays = 20;
     private bool shouldRenderChart = false;
     private bool isLoading = false;
     private int chartUpdateVersion = 0;
 
+    // Stock search related properties
+    private List<OptionsData> allStocks = new List<OptionsData>();
+    private List<OptionsData> filteredStocks = new List<OptionsData>();
+    private OptionsData? selectedStockInfo = null;
+    private string searchTerm = "";
+    private bool showDropdown = false;
+    private bool isLoadingStocks = false;
+    private Timer? hideDropdownTimer;
+
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadStockDataAsync();
+        await LoadAvailableStocksAsync();
+
+        // Set default selection to Tesla if available
+        var defaultStock = allStocks.FirstOrDefault(s => s.Symbol == "TSLA") ?? allStocks.FirstOrDefault();
+        if (defaultStock != null)
+        {
+            selectedStockInfo = defaultStock;
+            searchTerm = $"{defaultStock.Symbol}";
+            await LoadStockDataAsync();
+        }
+    }
+
+    private async Task LoadAvailableStocksAsync()
+    {
+        try
+        {
+            isLoadingStocks = true;
+            StateHasChanged();
+
+            // Replace this URL with your actual API endpoint
+            var response = await Http.GetFromJsonAsync<List<OptionsData>>($"http://localhost:5210/api/Options/SearchLikeSymbol/{""}");
+
+            if (response != null)
+            {
+                allStocks = response.OrderBy(s => s.Symbol).ToList();
+                filteredStocks = allStocks.ToList();
+            }
+            else
+            {
+                // Fallback to hardcoded stocks if API fails
+                allStocks = new List<OptionsData>
+                {
+                    new OptionsData { Symbol = "TSLA" },
+                    new OptionsData { Symbol = "MSFT" },
+                    new OptionsData { Symbol = "AAPL"},
+                    new OptionsData { Symbol = "GOOGL" },
+                    new OptionsData { Symbol = "AMZN" },
+                    new OptionsData { Symbol = "META" },
+                    new OptionsData { Symbol = "NVDA" }
+                };
+                filteredStocks = allStocks.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            //directed here 
+            Console.WriteLine($"Error loading stocks: {ex.Message}");
+
+            // Fallback to hardcoded stocks
+            allStocks = new List<OptionsData>
+            {
+                new OptionsData { Symbol = "TSLA" },
+                new OptionsData { Symbol = "MSFT" },
+                new OptionsData { Symbol = "AAPL" },
+                new OptionsData { Symbol = "GOOGL" },
+                new OptionsData { Symbol = "AMZN" },
+                new OptionsData { Symbol = "META" }
+            };
+            filteredStocks = allStocks.ToList();
+        }
+        finally
+        {
+            isLoadingStocks = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        FilterStocks();
+        showDropdown = true;
+    }
+
+    private void FilterStocks()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredStocks = allStocks.ToList();
+        }
+        else
+        {
+            var searchLower = searchTerm.ToLower();
+            filteredStocks = allStocks.Where(s =>
+                s.Symbol.ToLower().Contains(searchLower)
+            ).ToList();
+        }
+        StateHasChanged();
+    }
+
+    private void ShowDropdown()
+    {
+        hideDropdownTimer?.Dispose();
+        showDropdown = true;
+        FilterStocks();
+    }
+
+    private void HideDropdownDelayed()
+    {
+        hideDropdownTimer?.Dispose();
+        hideDropdownTimer = new Timer((_) =>
+        {
+            InvokeAsync(() =>
+            {
+                showDropdown = false;
+                StateHasChanged();
+            });
+        }, null, 200, Timeout.Infinite);
+    }
+
+    private void SelectStock(OptionsData stockInfo)
+    {
+        selectedStockInfo = stockInfo;
+        searchTerm = $"{stockInfo.Symbol}";
+        showDropdown = false;
+        StateHasChanged();
     }
 
     private async Task HandleUpdateButtonClick()
     {
-        if (isLoading) return;
+        if (isLoading || selectedStockInfo == null) return;
 
         chartUpdateVersion++; // Increment version to force refresh
         await LoadStockDataAsync();
@@ -93,13 +267,15 @@
 
     private async Task LoadStockDataAsync()
     {
+        if (selectedStockInfo == null) return;
+
         int currentVersion = chartUpdateVersion;
 
         try
         {
             isLoading = true;
             isError = false;
-            message = $"Loading {selectedStock} data for the last {selectedDays} days...";
+            message = $"Loading {selectedStockInfo.Symbol} data for the last {selectedDays} days...";
 
             // Remove chart from DOM
             shouldRenderChart = false;
@@ -112,12 +288,12 @@
             if (currentVersion != chartUpdateVersion) return;
 
             DateTime start = DateTime.Now.AddDays(-selectedDays);
-            prices = await stock.GetHistoricalClosingPricesAsync(selectedStock, start);
+            prices = await stock.GetHistoricalClosingPricesAsync(selectedStockInfo.Symbol, start);
 
             if (prices == null || prices.Count == 0)
             {
                 isError = true;
-                message = $"No historical data found for {selectedStock} in the last {selectedDays} days.";
+                message = $"No historical data found for {selectedStockInfo.Symbol} in the last {selectedDays} days.";
                 StateHasChanged();
                 isLoading = false;
                 return;
@@ -130,25 +306,25 @@
             var datasets = new List<IChartDataset>();
 
             var dataset1 = new LineChartDataset
-                {
-                    Label = selectedStock,
-                    Data = prices.Select(p => (double?)p).ToList(),
-                    BackgroundColor = colors[0],
-                    BorderColor = colors[0],
-                    BorderWidth = 2,
-                    HoverBorderWidth = 4,
+            {
+                Label = selectedStockInfo.Symbol,
+                Data = prices.Select(p => (double?)p).ToList(),
+                BackgroundColor = colors[0],
+                BorderColor = colors[0],
+                BorderWidth = 2,
+                HoverBorderWidth = 4,
                 // PointRadius and PointHoverRadius commented out as they caused issues
-                };
+            };
 
             datasets.Add(dataset1);
             chartData = new ChartData { Labels = labels, Datasets = datasets };
 
             // Configure chart options
             lineChartOptions = new LineChartOptions
-                {
-                    Responsive = true,
-                    Interaction = new Interaction { Mode = InteractionMode.Index }
-                };
+            {
+                Responsive = true,
+                Interaction = new Interaction { Mode = InteractionMode.Index }
+            };
 
             // Configure axes
             lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "Date", Display = true };
@@ -162,7 +338,7 @@
             lineChartOptions.Scales.Y!.Max = maxPrice + padding;
 
             // Set chart title
-            lineChartOptions.Plugins.Title!.Text = $"{selectedStock} Stock Price - Last {selectedDays} Days";
+            lineChartOptions.Plugins.Title!.Text = $"{selectedStockInfo.Symbol} Stock Price - Last {selectedDays} Days";
             lineChartOptions.Plugins.Title.Display = true;
 
             message = "";
@@ -257,5 +433,10 @@
         {
             // No need to do anything in first render as LoadStockDataAsync handles it
         }
+    }
+
+    public void Dispose()
+    {
+        hideDropdownTimer?.Dispose();
     }
 }
