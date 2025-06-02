@@ -5,19 +5,89 @@
 @inject User_service User_service
 @using ClassLibrary
 @inject NavigationManager NavigationManager
+@using System.ComponentModel.DataAnnotations
 
 <h3>Options Requests</h3>
+
 <div class="search-container d-flex mb-3">
     <input type="text" @bind="searchTerm" placeholder="search by symbol..." class="form-control me-2" />
     <button class="btn btn-primary" @onclick="LoadOptionsRequests">Search</button>
 </div>
+
 @if (optionsData == null || isLoading)
 {
     <p>Loading...</p>
 }
+else if (optionsData.Count == 0 && !string.IsNullOrEmpty(searchTerm))
+{
+    <div class="alert alert-info">
+        <p>No records found for "<strong>@searchTerm.ToUpper()</strong>"</p>
+
+        <button class="btn btn-success" @onclick="ShowAddForm">
+            <i class="bi bi-plus"></i> Add @searchTerm.ToUpper() to Database
+        </button>
+    </div>
+
+    @if (showAddForm)
+    {
+        <div class="card mt-3">
+            <div class="card-header">
+                Add New Investment: @searchTerm.ToUpper()
+            </div>
+            <div class="card-body">
+                <EditForm Model="@request" OnValidSubmit="@HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label for="symbol" class="form-label">Symbol:</label>
+                        <InputText id="symbol" @bind-Value="request.Optionsymbol" class="form-control" readonly />
+                        <ValidationMessage For="@(() => request.Optionsymbol)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name:</label>
+                        <InputText id="name" @bind-Value="request.StockName" class="form-control" placeholder="e.g. Tesla Inc, Microsoft Corporation" />
+                        <ValidationMessage For="@(() => request.StockName)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="investmentType" class="form-label">Investment Type:</label>
+                        <InputSelect id="investmentType" @bind-Value="request.type" class="form-control">
+                            <option value="1">Stock</option>
+                            <option value="2">ETF</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => request.type)" />
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Add Investment</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelAdd">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(addMessage))
+        {
+            <div class="alert @(isAddError ? "alert-danger" : "alert-success") mt-3">
+                @addMessage
+            </div>
+        }
+    }
+}
 else if (optionsData.Count == 0)
 {
-    <p>No records found.</p>
+    <p>No records found. Use the search above to find specific symbols.</p>
 }
 else
 {
@@ -42,7 +112,6 @@ else
             }
         </tbody>
     </table>
-
     @if (optionsData.Count > 10)
     {
         <div class="mt-2">
@@ -55,8 +124,17 @@ else
     private List<OptionsData> optionsData;
     private List<OptionsData> displayedItems => optionsData?.Take(10).ToList() ?? new List<OptionsData>();
     private string searchTerm = "";
-    private YFinanceControl stock = new YFinanceControl();
+    private YQuotesControl yquotes = new YQuotesControl();
+    private YFinanceControl yfinance = new YFinanceControl();
     private bool isLoading = false;
+
+    // Add form variables
+    private bool showAddForm = false;
+    private OptionsRequest request = new OptionsRequest();
+    private bool isSubmitting = false;
+    private string addMessage = "";
+    private bool isAddError = false;
+    DateTime start = DateTime.Now.AddDays(-10);
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,6 +146,8 @@ else
         try
         {
             isLoading = true;
+            showAddForm = false; // Hide add form when searching
+            addMessage = ""; // Clear add messages
             StateHasChanged();
 
             // Call your API through the service, passing the search term
@@ -79,7 +159,7 @@ else
             {
                 try
                 {
-                    item.CurrentPrice = await stock.GetSingle(item.Symbol);
+                    item.CurrentPrice = await yfinance.GetSingle(item.Symbol);
                 }
                 catch (Exception ex)
                 {
@@ -87,13 +167,11 @@ else
                     item.CurrentPrice = 0.0;
                 }
             }
-
             optionsData = tempOptionsData;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading options requests: {ex.Message}");
-            // Handle error appropriately
             optionsData = new List<OptionsData>();
         }
         finally
@@ -103,17 +181,120 @@ else
         }
     }
 
+    private void ShowAddForm()
+    {
+        showAddForm = true;
+        request = new OptionsRequest();
+        request.Optionsymbol = searchTerm.ToUpper();
+        request.type = 1; // Default to Stock
+        addMessage = "";
+        isAddError = false;
+    }
+
+    private void CancelAdd()
+    {
+        showAddForm = false;
+        request = new OptionsRequest();
+        addMessage = "";
+        isAddError = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            isSubmitting = true;
+            addMessage = "";
+            StateHasChanged();
+
+            // Check if symbol already exists (using the same logic as option-manager)
+            string checkUrl = $"http://localhost:5210/api/Options/GetOptionsBySymbol/{request.Optionsymbol}";
+            var existingOptions = await Http.GetFromJsonAsync<List<OptionsData>>(checkUrl);
+
+            if (existingOptions.Count == 0)
+            {
+                // Validate stock data exists before inserting
+                bool stockDataExists = await ValidateStockData(request.Optionsymbol);
+
+                if (!stockDataExists)
+                {
+                    addMessage = $"Unable to find valid stock data for symbol: {request.Optionsymbol}. Please verify the symbol exists.";
+                    isAddError = true;
+                    return;
+                }
+
+                var response = await Http.PostAsJsonAsync("http://localhost:5210/api/Options/Insert_stock", request);
+                if (response.IsSuccessStatusCode)
+                {
+                    addMessage = $"Successfully added {request.Optionsymbol}";
+                    isAddError = false;
+
+                    // Refresh the search results after successful addition
+                    await Task.Delay(2000); // Show success message for 2 seconds
+                    await LoadOptionsRequests();
+                    showAddForm = false;
+                }
+                else
+                {
+                    addMessage = "API request failed";
+                    Console.WriteLine(response);
+                    isAddError = true;
+                }
+            }
+            else
+            {
+                Console.WriteLine("match found");
+                addMessage = $"{request.Optionsymbol} already exists in database";
+                isAddError = true;
+
+                // Refresh search to show the existing record
+                await LoadOptionsRequests();
+            }
+        }
+        catch (Exception ex)
+        {
+            addMessage = $"Error: {ex.Message}";
+            isAddError = true;
+            Console.WriteLine($"Error: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<bool> ValidateStockData(string symbol)
+    {
+        try
+        {
+            // Test both YFinanceControl and YQuotesControl (same as option-manager)
+            double? currentPrice = await yfinance.GetSingle(symbol);
+            List<double> historicalPrices = await yquotes.GetHistoricalClosingPricesAsync(symbol, start);
+
+            // Check if we got valid data from both sources
+            bool hasCurrentPrice = currentPrice.HasValue && currentPrice.Value > 0;
+            bool hasHistoricalData = historicalPrices != null && historicalPrices.Count > 0;
+
+            return hasCurrentPrice && hasHistoricalData;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error validating stock data for {symbol}: {ex.Message}");
+            return false;
+        }
+    }
+
     private async Task<double?> GetCurrentPrice(string symbol)
     {
         try
         {
-            // Get the current price using YFinanceControl
-            return await stock.GetSingle(symbol);
+            return await yfinance.GetSingle(symbol);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting price for {symbol}: {ex.Message}");
-            return 0.0; // Return default value in case of error
+            return 0.0;
         }
     }
 
